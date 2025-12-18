@@ -304,10 +304,10 @@
     <!-- Theme Modal -->
     <div id="themeModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm">
         <div class="w-full max-w-xs rounded-3xl p-6 shadow-2xl space-y-4" style="background-color: var(--bg-card);">
-            <h3 class="font-bold text-center mb-4" style="color: var(--text-main);">テーマ切り替え</h3>
+            <h3 class="font-bold text-center mb-4">テーマ切り替え</h3>
             <button onclick="setTheme('default')" class="w-full py-3 rounded-xl border-2 font-bold mb-2 transition-all active:scale-95" style="border-color: #4f46e5; color: #4f46e5;">通常モード</button>
             <button onclick="setTheme('cyberpunk')" class="w-full py-3 rounded-xl border-2 font-bold mb-2 transition-all active:scale-95 bg-black" style="border-color: #00ffcc; color: #00ffcc; font-family: 'Share Tech Mono';">Cyberpunk 2077</button>
-            <button onclick="setTheme('marunouchi')" class="w-full py-3 rounded-xl border-2 font-bold mb-2 transition-all active:scale-95" style="border-color: #c9a063; color: #5d544b; font-family: 'Shippori Mincho';">丸の内OL</button>
+            <button onclick="setTheme('marunouchi')" class="w-full py-3 rounded-xl border-2 font-bold transition-all active:scale-95" style="border-color: #c9a063; color: #5d544b; font-family: 'Shippori Mincho';">丸の内OL</button>
             <button onclick="setTheme('tropical')" class="w-full py-3 rounded-xl border-2 font-bold mb-2 transition-all active:scale-95 bg-yellow-50" style="border-color: #fcd34d; color: #0891b2; font-family: 'Inter';">南国ビーチ</button>
             <button onclick="setTheme('galaxy')" class="w-full py-3 rounded-xl border-2 font-bold mb-2 transition-all active:scale-95 bg-slate-900" style="border-color: #c084fc; color: #e2e8f0; font-family: 'Share Tech Mono';">ギャラクシー</button>
             <button onclick="toggleThemeModal()" class="w-full text-center text-xs font-bold pt-4" style="color: var(--text-sub);">閉じる</button>
@@ -477,7 +477,7 @@
                 <div class="flex items-center gap-2">
                     <h2 class="text-xs font-bold opacity-60 uppercase tracking-widest">Completion Timeline</h2>
                 </div>
-                <div class="text-[10px] text-slate-400 font-bold">※ローカルで動作中</div>
+                <div class="text-[10px] text-slate-400 font-bold">※ローカルで動作中 (表示:100件まで)</div>
             </div>
             <div id="boxTimeline" class="space-y-2 max-h-[70vh] overflow-y-auto custom-scrollbar text-center">数値を入力してください</div>
         </section>
@@ -537,12 +537,12 @@
 
         // --- GitHub Pages用に設定を変更してください ---
         const firebaseConfig = {
-            apiKey: "AIzaSyD8ffNzoaeQWHL-d7N3Fmqzz0D3vwa0ZDI",
-            authDomain: "pro-timer-app.firebaseapp.com",
-            projectId: "pro-timer-app",
-            storageBucket: "pro-timer-app.firebasestorage.app",
-            messagingSenderId: "381245688508",
-            appId: "1:381245688508:web:4e659e5f2a09bbb7139eb9"
+          apiKey: "AIzaSyD8ffNzoaeQWHL-d7N3Fmqzz0D3vwa0ZDI",
+          authDomain: "pro-timer-app.firebaseapp.com",
+          projectId: "pro-timer-app",
+          storageBucket: "pro-timer-app.firebasestorage.app",
+          messagingSenderId: "381245688508",
+          appId: "1:381245688508:web:4e659e5f2a09bbb7139eb9"
         };
         // -------------------------------------------
 
@@ -564,6 +564,7 @@
         let unsubscribeGroup = null;
         let cloudTasks = []; 
         let localTasks = [];
+        let calcTimer; // Timer for debounce
 
         // Core variables for calculator
         let currentBoxSchedule = [];
@@ -899,6 +900,7 @@
 
             if (currentBoxSchedule.length > 0) {
                 const lastBox = currentBoxSchedule[currentBoxSchedule.length - 1];
+                // 最後の要素の日付を生成（これは軽量）
                 const finishDateObj = new Date(lastBox.absoluteTime);
                 const dateStr = finishDateObj.toLocaleDateString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric', weekday: 'short' });
                 const timeStr = finishDateObj.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
@@ -924,21 +926,26 @@
             let html = '';
             const schedule = [];
             let cumulativeDelay = 0; 
+            const startTimeMs = start.getTime();
 
             for (let i = 1; i <= totalBoxes; i++) {
                 cumulativeDelay += (delays[i] || 0);
                 const shotsNeeded = Math.ceil((i * boxQty) / cav);
                 const theoreticalSeconds = shotsNeeded * secPerShot;
-                const boxFinishDate = new Date(start.getTime() + (theoreticalSeconds + cumulativeDelay) * 1000);
-
-                const boxDate = boxFinishDate.toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit' });
-                const boxTime = boxFinishDate.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', hour12: false });
-                const isoLocal = dateToIsoLocal(boxFinishDate);
+                // 純粋な数値計算のみ行う
+                const absoluteTime = startTimeMs + (theoreticalSeconds + cumulativeDelay) * 1000;
+                
                 const currentMemo = memos[i] || "";
                 
-                schedule.push({ num: i, date: boxDate, time: boxTime, absoluteTime: boxFinishDate.getTime(), delay: delays[i] || 0, memo: currentMemo });
+                // データとしては数値だけを持つ
+                schedule.push({ num: i, absoluteTime: absoluteTime, delay: delays[i] || 0, memo: currentMemo });
 
-                if (i <= 200) {
+                // DOM描画の制限（負荷軽減のため200->100に変更）
+                if (i <= 100) {
+                    // 表示するときだけ日付変換を行う
+                    const boxFinishDate = new Date(absoluteTime);
+                    const isoLocal = dateToIsoLocal(boxFinishDate);
+                    
                     const isAdjusted = delays[i] && delays[i] !== 0;
                     html += `
                         <div class="flex flex-col p-2 rounded-2xl border transition-all shadow-sm mb-2" style="background-color: var(--bg-card); border-color: var(--card-border);">
@@ -1088,8 +1095,11 @@
                                 "params.startIso": newStartIso,
                                 "startDateTime": new Date(newStartIso).toLocaleString('ja-JP', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
                                 "boxSchedule": result.schedule,
-                                "finishFull": `${result.schedule[result.schedule.length-1].date} ${result.schedule[result.schedule.length-1].time}` 
+                                "finishFull": `${new Date(result.schedule[result.schedule.length-1].absoluteTime).toLocaleString('ja-JP')} ` // 簡易生成
                             };
+                            
+                            // History では finishFull を表示用文字列として持っているが、ここも軽量化したいところ
+                            // 今回は簡易的に生成
 
                             updateTaskProperty(taskId, updates);
 
@@ -1102,8 +1112,7 @@
 
                             updateTaskProperty(taskId, {
                                 [`manualDelays.${boxNum}`]: newDelay,
-                                "boxSchedule": result.schedule,
-                                "finishFull": `${result.schedule[result.schedule.length-1].date} ${result.schedule[result.schedule.length-1].time}`
+                                "boxSchedule": result.schedule
                             });
                         }
                     }
@@ -1148,8 +1157,7 @@
 
                     updateTaskProperty(taskId, {
                         [`manualDelays.${boxNum}`]: newDelay,
-                        "boxSchedule": result.schedule,
-                        "finishFull": `${result.schedule[result.schedule.length-1].date} ${result.schedule[result.schedule.length-1].time}`
+                        "boxSchedule": result.schedule
                     });
                 }
             }
@@ -1600,7 +1608,11 @@
                         </div>
                         <div id="boxlist-${task.id}" class="space-y-1 max-h-56 overflow-y-auto custom-scrollbar pr-1">
                             ${task.boxSchedule.map(box => {
-                                const boxIso = dateToIsoLocal(new Date(box.absoluteTime));
+                                const boxFinishDate = new Date(box.absoluteTime);
+                                const boxDate = boxFinishDate.toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit' });
+                                const boxTime = boxFinishDate.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', hour12: false });
+                                const boxIso = dateToIsoLocal(boxFinishDate);
+
                                 const currentMemo = (task.manualMemos && task.manualMemos[box.num] !== undefined) ? task.manualMemos[box.num] : (box.memo || "");
                                 return `<div class="flex flex-col p-2 border-b border-slate-200 last:border-0 opacity-80">
                                     <div class="flex items-center justify-between">
@@ -1639,8 +1651,13 @@
                 document.getElementById(id)?.addEventListener('input', () => { 
                     manualDelays = {}; 
                     manualMemos = {}; 
-                    calculate(); 
-                    notifiedBoxesMap.clear();
+                    
+                    // デバウンス処理
+                    clearTimeout(calcTimer);
+                    calcTimer = setTimeout(() => {
+                        calculate();
+                        notifiedBoxesMap.clear();
+                    }, 400); // 0.4秒待機
                 });
             });
         };
