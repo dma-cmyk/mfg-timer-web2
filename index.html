@@ -1192,6 +1192,42 @@
                 }
             }
         }
+        
+        window.updateTaskParams = (taskId, field, value) => {
+            const list = currentGroupId ? cloudTasks : localTasks;
+            const task = list.find(t => t.id === taskId);
+            if (!task) return;
+        
+            const val = parseFloat(value);
+            if (isNaN(val) || val < 0) return;
+        
+            const newParams = { ...task.params, [field]: val };
+        
+            const qty = newParams.quantity;
+            const cav = newParams.cavities;
+            const boxQty = newParams.qtyPerBox;
+            const cycle = newParams.cycleTime;
+            const eff = newParams.efficiency;
+        
+            const totalShots = Math.ceil(qty / cav);
+            const totalBoxes = Math.ceil(qty / boxQty);
+            const secPerShot = cycle / (eff / 100);
+            
+            const start = new Date(task.params.startIso);
+            
+            const result = generateTimeline(start, totalBoxes, boxQty, cav, secPerShot, task.manualDelays || {}, task.manualMemos || {}, task.id);
+        
+            const updates = {
+                [`params.${field}`]: val,
+                boxes: totalBoxes,
+                shots: totalShots,
+                boxSchedule: result.schedule,
+                // scheduleが空の場合はケアする
+                finishFull: (result.schedule.length > 0) ? `${new Date(result.schedule[result.schedule.length-1].absoluteTime).toLocaleString('ja-JP')} ` : "---"
+            };
+            
+            updateTaskProperty(taskId, updates);
+        };
 
         window.updateTaskTitle = (taskId, newTitle) => {
             updateTaskProperty(taskId, { title: newTitle });
@@ -1254,33 +1290,45 @@
                     if (currentBox) {
                         const diffMs = targetTime.getTime() - currentBox.absoluteTime;
                         
+                        // Common recompute logic
+                        const start = new Date(task.params.startIso);
+                        const secPerShot = task.params.cycleTime / (task.params.efficiency / 100);
+                        let result;
+                        let updates = {};
+
                         if (globalShift) {
-                            const oldStart = new Date(task.params.startIso);
-                            const newStartIso = dateToIsoLocal(new Date(oldStart.getTime() + diffMs));
-                            const secPerShot = task.params.cycleTime / (task.params.efficiency / 100);
-                            const result = generateTimeline(new Date(newStartIso), task.boxes, task.params.qtyPerBox, task.params.cavities, secPerShot, task.manualDelays || {}, task.manualMemos || {}, task.id);
+                            const newStartIso = dateToIsoLocal(new Date(start.getTime() + diffMs));
+                            // Recompute with new start time
+                            result = generateTimeline(new Date(newStartIso), task.boxes, task.params.qtyPerBox, task.params.cavities, secPerShot, task.manualDelays || {}, task.manualMemos || {}, task.id);
                             
-                            const updates = {
+                            updates = {
                                 "params.startIso": newStartIso,
                                 "startDateTime": new Date(newStartIso).toLocaleString('ja-JP', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
-                                "boxSchedule": result.schedule,
-                                "finishFull": `${new Date(result.schedule[result.schedule.length-1].absoluteTime).toLocaleString('ja-JP')} ` // 簡易生成
                             };
-
-                            updateTaskProperty(taskId, updates);
 
                         } else {
                             const newDelay = (task.manualDelays?.[boxNum] || 0) + (diffMs / 1000);
-                            const start = new Date(task.params.startIso);
-                            const secPerShot = task.params.cycleTime / (task.params.efficiency / 100);
                             const delays = { ...(task.manualDelays || {}), [boxNum]: newDelay };
-                            const result = generateTimeline(start, task.boxes, task.params.qtyPerBox, task.params.cavities, secPerShot, delays, task.manualMemos || {}, task.id);
+                            // Recompute with new delays
+                            result = generateTimeline(start, task.boxes, task.params.qtyPerBox, task.params.cavities, secPerShot, delays, task.manualMemos || {}, task.id);
 
-                            updateTaskProperty(taskId, {
-                                [`manualDelays.${boxNum}`]: newDelay,
-                                "boxSchedule": result.schedule,
-                                "finishFull": `${result.schedule[result.schedule.length-1].date} ${result.schedule[result.schedule.length-1].time}`
-                            });
+                            updates[`manualDelays.${boxNum}`] = newDelay;
+                            if(!currentGroupId) { // Local specific structure update
+                                if(!task.manualDelays) task.manualDelays = {};
+                                task.manualDelays[boxNum] = newDelay;
+                            }
+                        }
+
+                        // Common schedule & finish time update
+                        if (result && result.schedule.length > 0) {
+                            const lastBox = result.schedule[result.schedule.length - 1];
+                            const dt = new Date(lastBox.absoluteTime);
+                            const finishStr = `${dt.toLocaleDateString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric', weekday: 'short' })} ${dt.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}`;
+                            
+                            updates["boxSchedule"] = result.schedule;
+                            updates["finishFull"] = finishStr;
+                            
+                            updateTaskProperty(taskId, updates);
                         }
                     }
                 }
@@ -1322,11 +1370,26 @@
                     const delays = { ...(task.manualDelays || {}), [boxNum]: newDelay };
                     const result = generateTimeline(start, task.boxes, task.params.qtyPerBox, task.params.cavities, secPerShot, delays, task.manualMemos || {}, task.id);
 
-                    updateTaskProperty(taskId, {
-                        [`manualDelays.${boxNum}`]: newDelay,
-                        "boxSchedule": result.schedule,
-                        "finishFull": `${result.schedule[result.schedule.length-1].date} ${result.schedule[result.schedule.length-1].time}`
-                    });
+                    if (result && result.schedule.length > 0) {
+                        const lastBox = result.schedule[result.schedule.length - 1];
+                        const dt = new Date(lastBox.absoluteTime);
+                        const finishStr = `${dt.toLocaleDateString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric', weekday: 'short' })} ${dt.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}`;
+
+                        const updates = {
+                            "boxSchedule": result.schedule,
+                            "finishFull": finishStr
+                        };
+                        
+                        if(currentGroupId) {
+                            updates[`manualDelays.${boxNum}`] = newDelay;
+                        } else {
+                            if(!task.manualDelays) task.manualDelays = {};
+                            task.manualDelays[boxNum] = newDelay;
+                            // For local, updateTaskProperty will merge these
+                        }
+                        
+                        updateTaskProperty(taskId, updates);
+                    }
                 }
             }
 
@@ -1835,6 +1898,25 @@
                                 </div>
                                 <label class="switch"><input type="checkbox" ${task.alarmEnabled ? 'checked' : ''} onchange="toggleTaskAlarm(${task.id})"><span class="slider"></span></label>
                             </div>
+                            
+                            <div class="grid grid-cols-3 gap-2 mb-3 bg-slate-50 p-2 rounded-xl border border-slate-100">
+                                <div>
+                                    <label class="text-[9px] text-slate-400 font-bold block mb-0.5">予定数</label>
+                                    <input type="number" class="w-full bg-white border border-slate-200 rounded px-2 py-1 text-xs font-bold text-slate-700 outline-none focus:border-indigo-500"
+                                        value="${task.params.quantity}" onchange="updateTaskParams(${task.id}, 'quantity', this.value)">
+                                </div>
+                                <div>
+                                    <label class="text-[9px] text-slate-400 font-bold block mb-0.5">取り数</label>
+                                    <input type="number" class="w-full bg-white border border-slate-200 rounded px-2 py-1 text-xs font-bold text-slate-700 outline-none focus:border-indigo-500"
+                                        value="${task.params.cavities}" onchange="updateTaskParams(${task.id}, 'cavities', this.value)">
+                                </div>
+                                <div>
+                                    <label class="text-[9px] text-slate-400 font-bold block mb-0.5">サイクル</label>
+                                    <input type="number" step="0.1" class="w-full bg-white border border-slate-200 rounded px-2 py-1 text-xs font-bold text-slate-700 outline-none focus:border-indigo-500"
+                                        value="${task.params.cycleTime}" onchange="updateTaskParams(${task.id}, 'cycleTime', this.value)">
+                                </div>
+                            </div>
+
                             <div class="flex gap-2">
                                 <button onclick="downloadCSV(${task.id})" class="flex-1 py-2 rounded-xl text-[10px] font-bold border" style="background-color: var(--bg-card); color: var(--text-sub); border-color: var(--card-border);">CSV</button>
                                 <button onclick="copyTask(${task.id})" class="flex-1 py-2 rounded-xl text-[10px] font-bold border" style="background-color: var(--bg-card); color: var(--text-sub); border-color: var(--card-border);">コピー</button>
