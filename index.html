@@ -52,6 +52,42 @@
             --font-mono: 'Inter', sans-serif;
         }
 
+        /* 新テーマ: 南国ビーチ */
+        [data-theme="tropical"] {
+            --primary: #0ea5e9; /* Ocean Blue */
+            --bg-body: #fffbeb; /* Sand */
+            --bg-card: rgba(255, 255, 255, 0.85);
+            --text-main: #0c4a6e; /* Deep Blue */
+            --text-sub: #0891b2; /* Cyan */
+            --accent: #f43f5e; /* Hibiscus Pink */
+            --header-bg: rgba(255, 255, 255, 0.9);
+            --nav-bg: rgba(255, 255, 255, 0.9);
+            --card-border: #fcd34d; /* Sunshine */
+            --font-main: 'Inter', sans-serif;
+            --font-mono: 'Inter', sans-serif;
+            background-image: linear-gradient(180deg, #bae6fd 0%, #fffbeb 100%);
+            background-attachment: fixed;
+            background-size: cover;
+        }
+
+        /* 新テーマ: ギャラクシー */
+        [data-theme="galaxy"] {
+            --primary: #c084fc; /* Nebula Purple */
+            --bg-body: #020617; /* Deep Space */
+            --bg-card: rgba(15, 23, 42, 0.7); /* Translucent Dark */
+            --text-main: #e2e8f0; /* Star White */
+            --text-sub: #94a3b8; /* Stardust Gray */
+            --accent: #22d3ee; /* Plasma Cyan */
+            --header-bg: rgba(2, 6, 23, 0.9);
+            --nav-bg: rgba(2, 6, 23, 0.9);
+            --card-border: #4c1d95; /* Void Border */
+            --font-main: 'Share Tech Mono', monospace;
+            --font-mono: 'Share Tech Mono', monospace;
+            background-image: radial-gradient(circle at 50% 0%, #312e81 0%, #020617 80%);
+            background-attachment: fixed;
+            background-size: cover;
+        }
+
         body {
             font-family: var(--font-main);
             background-color: var(--bg-body);
@@ -110,7 +146,8 @@
             overflow-y: hidden;
         }
 
-        [data-theme="cyberpunk"] ::-webkit-calendar-picker-indicator {
+        [data-theme="cyberpunk"] ::-webkit-calendar-picker-indicator,
+        [data-theme="galaxy"] ::-webkit-calendar-picker-indicator {
             filter: invert(1);
             opacity: 0.8;
             cursor: pointer;
@@ -251,7 +288,7 @@
                     </p>
                     <ul class="text-xs space-y-1.5 opacity-80 pl-2">
                         <li class="flex gap-2"><span class="font-bold text-orange-500">▶</span> <span><strong class="font-bold">ローカルモード:</strong> 通常時。履歴はあなたの端末だけに保存されます。</span></li>
-                        <li class="flex gap-2"><span class="font-bold text-orange-500">▶</span> <span><strong class="font-bold">クラウドモード:</strong> ヘッダーの「共有」ボタンからグループIDで接続すると、履歴リストがグループ全員と同期されます。チームでの進捗共有に最適です。</span></li>
+                        <li class="flex gap-2"><span class="font-bold text-orange-500">▶</span> <span><strong class="font-bold">クラウドモード:</strong> メニューの「クラウド共有」からグループIDで接続すると、履歴リストがグループ全員と同期されます。チームでの進捗共有に最適です。</span></li>
                         <li class="flex gap-2"><span class="font-bold text-orange-500">▶</span> <span><strong class="font-bold">機能:</strong> アラーム設定（音声読み上げ）、CSV出力、詳細編集が可能です。</span></li>
                     </ul>
                 </div>
@@ -267,10 +304,12 @@
     <!-- Theme Modal -->
     <div id="themeModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm">
         <div class="w-full max-w-xs rounded-3xl p-6 shadow-2xl space-y-4" style="background-color: var(--bg-card);">
-            <h3 class="font-bold text-center mb-4">テーマ切り替え</h3>
+            <h3 class="font-bold text-center mb-4" style="color: var(--text-main);">テーマ切り替え</h3>
             <button onclick="setTheme('default')" class="w-full py-3 rounded-xl border-2 font-bold mb-2 transition-all active:scale-95" style="border-color: #4f46e5; color: #4f46e5;">通常モード</button>
             <button onclick="setTheme('cyberpunk')" class="w-full py-3 rounded-xl border-2 font-bold mb-2 transition-all active:scale-95 bg-black" style="border-color: #00ffcc; color: #00ffcc; font-family: 'Share Tech Mono';">Cyberpunk 2077</button>
-            <button onclick="setTheme('marunouchi')" class="w-full py-3 rounded-xl border-2 font-bold transition-all active:scale-95" style="border-color: #c9a063; color: #5d544b; font-family: 'Shippori Mincho';">丸の内OL</button>
+            <button onclick="setTheme('marunouchi')" class="w-full py-3 rounded-xl border-2 font-bold mb-2 transition-all active:scale-95" style="border-color: #c9a063; color: #5d544b; font-family: 'Shippori Mincho';">丸の内OL</button>
+            <button onclick="setTheme('tropical')" class="w-full py-3 rounded-xl border-2 font-bold mb-2 transition-all active:scale-95 bg-yellow-50" style="border-color: #fcd34d; color: #0891b2; font-family: 'Inter';">南国ビーチ</button>
+            <button onclick="setTheme('galaxy')" class="w-full py-3 rounded-xl border-2 font-bold mb-2 transition-all active:scale-95 bg-slate-900" style="border-color: #c084fc; color: #e2e8f0; font-family: 'Share Tech Mono';">ギャラクシー</button>
             <button onclick="toggleThemeModal()" class="w-full text-center text-xs font-bold pt-4" style="color: var(--text-sub);">閉じる</button>
         </div>
     </div>
