@@ -457,15 +457,33 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Initialize Firebase
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // --- GitHub Pages用に設定を変更してください ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyD8ffNzoaeQWHL-d7N3Fmqzz0D3vwa0ZDI",
+            authDomain: "pro-timer-app.firebaseapp.com",
+            projectId: "pro-timer-app",
+            storageBucket: "pro-timer-app.firebasestorage.app",
+            messagingSenderId: "381245688508",
+            appId: "1:381245688508:web:4e659e5f2a09bbb7139eb9"
+        };
+
+        // -------------------------------------------
+
+        // アプリID（Firestoreのパスに使用。自由に変更可）
+        const appId = 'pro-timer-cloud';
+
+        // Check if config is set
+        let app, auth, db;
+        if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+        } else {
+            console.warn("Firebase config not set. Cloud features will be disabled.");
+        }
 
         let userId = null;
         let currentGroupId = null;
@@ -507,28 +525,26 @@
 
         // Robust Auth
         const initAuth = async () => {
+            if (!auth) return;
             try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
+                await signInAnonymously(auth);
             } catch (error) {
                 console.error("Auth failed", error);
-                try { await signInAnonymously(auth); } catch(e) { console.error("Fallback failed", e); }
             }
         };
         initAuth();
 
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                userId = user.uid;
-                document.getElementById('debugUser').textContent = `UID: ${userId.slice(0, 5)}...`;
-            } else {
-                userId = null;
-                document.getElementById('debugUser').textContent = `UID: ---`;
-            }
-        });
+        if (auth) {
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    userId = user.uid;
+                    document.getElementById('debugUser').textContent = `UID: ${userId.slice(0, 5)}...`;
+                } else {
+                    userId = null;
+                    document.getElementById('debugUser').textContent = `UID: ---`;
+                }
+            });
+        }
 
         function cleanObject(obj) {
             return JSON.parse(JSON.stringify(obj));
@@ -562,7 +578,7 @@
         };
 
         function joinGroupLogic(groupId) {
-            if (!userId) { window.showToast("接続エラー: 少し待って再試行してください"); return; }
+            if (!auth || !userId) { window.showToast("接続エラー: 設定を確認してください"); return; }
             
             if (unsubscribeGroup) unsubscribeGroup();
             currentGroupId = groupId;
@@ -845,7 +861,7 @@
 
         // --- Universal Update Helper ---
         async function updateTaskProperty(taskId, updates) {
-            if (currentGroupId) {
+            if (currentGroupId && auth && userId) {
                 // Update Cloud Task
                 const task = cloudTasks.find(t => t.id === taskId);
                 if (task && task.docId) {
@@ -1108,7 +1124,7 @@
                 createdAt: serverTimestamp() 
             };
 
-            if (currentGroupId) {
+            if (currentGroupId && auth && userId) {
                 try {
                     const collectionPath = `group_${currentGroupId}_history`;
                     await addDoc(collection(db, 'artifacts', appId, 'public', 'data', collectionPath), newTask);
@@ -1193,7 +1209,6 @@
             const files = Array.from(input.files);
             if (files.length === 0) return;
 
-            // 一時的にパースしたタスクを保持する配列
             const parsedTasks = [];
 
             for (const file of files) {
@@ -1284,7 +1299,7 @@
 
                         if (boxSchedule.length > 0) {
                             parsedTasks.push({
-                                id: Date.now() + parsedTasks.length, // 一時ID
+                                id: Date.now() + parsedTasks.length, // Temp ID
                                 title: taskData.title,
                                 startDateTime: taskData.startDateTime,
                                 finishFull: taskData.finishFull,
@@ -1309,8 +1324,8 @@
                 return;
             }
 
-            if (currentGroupId) {
-                // クラウドへのアップロード
+            if (currentGroupId && auth && userId) {
+                // Cloud Import
                 try {
                     const collectionPath = `group_${currentGroupId}_history`;
                     const colRef = collection(db, 'artifacts', appId, 'public', 'data', collectionPath);
@@ -1318,9 +1333,8 @@
                     let savedCount = 0;
                     for (const task of parsedTasks) {
                         const dataToSave = { ...task };
-                        delete dataToSave.id; // Firestore IDを使用するため削除
+                        delete dataToSave.id; 
                         dataToSave.createdAt = serverTimestamp();
-                        // データのクリーンアップ（undefined対策）
                         dataToSave.manualDelays = cleanObject(dataToSave.manualDelays);
                         dataToSave.manualMemos = cleanObject(dataToSave.manualMemos);
 
@@ -1333,9 +1347,9 @@
                     window.showToast("クラウドへの追加に失敗しました: " + e.message);
                 }
             } else {
-                // ローカルへの保存
+                // Local Import
                 parsedTasks.forEach(task => {
-                    task.id = Date.now() + Math.floor(Math.random() * 1000); // 重複回避
+                    task.id = Date.now() + Math.floor(Math.random() * 1000); 
                     task.createdAt = serverTimestamp();
                     localTasks.push(task);
                 });
