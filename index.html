@@ -1,0 +1,1506 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PRO-TIMER: Precision Edition (Cloud History)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Share+Tech+Mono&family=Shippori+Mincho:wght@400;700&display=swap');
+
+        :root {
+            --primary: #4f46e5;
+            --bg-body: #f8fafc;
+            --bg-card: #ffffff;
+            --text-main: #0f172a;
+            --text-sub: #64748b;
+            --accent: #818cf8;
+            --header-bg: #ffffff;
+            --nav-bg: #ffffff;
+            --card-border: #e2e8f0;
+            --font-main: 'Inter', sans-serif;
+            --font-mono: ui-monospace, monospace;
+        }
+
+        [data-theme="cyberpunk"] {
+            --primary: #00ffcc;
+            --bg-body: #050505;
+            --bg-card: #121212;
+            --text-main: #00ffcc;
+            --text-sub: #ff00ff;
+            --accent: #ffff00;
+            --header-bg: #1a1a1a;
+            --nav-bg: #1a1a1a;
+            --card-border: #333;
+            --font-main: 'Share Tech Mono', monospace;
+            --font-mono: 'Share Tech Mono', monospace;
+        }
+
+        [data-theme="marunouchi"] {
+            --primary: #c9a063;
+            --bg-body: #fdfcfb;
+            --bg-card: #ffffff;
+            --text-main: #5d544b;
+            --text-sub: #b2a496;
+            --accent: #e9d5ca;
+            --header-bg: #ffffff;
+            --nav-bg: #ffffff;
+            --card-border: #f0e6e0;
+            --font-main: 'Shippori Mincho', serif;
+            --font-mono: 'Inter', sans-serif;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            transition: all 0.3s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .theme-transition { transition: background-color 0.3s, color 0.3s, border-color 0.3s; }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.2s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 20px; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--primary); }
+        input:checked + .slider:before { transform: translateX(20px); }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 10px; }
+
+        .dt-input {
+            background: transparent;
+            border: none;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            color: inherit;
+            width: 110px;
+            text-align: right;
+            outline: none;
+            letter-spacing: -0.5px;
+            padding: 0;
+            margin: 0;
+            line-height: 1;
+        }
+        .dt-input::-webkit-datetime-edit { padding: 0; }
+        .dt-input::-webkit-datetime-edit-fields-wrapper { padding: 0; }
+        
+        .memo-input {
+            width: 100%;
+            background: rgba(0,0,0,0.03);
+            border: 1px solid rgba(0,0,0,0.05);
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            margin-top: 4px;
+            outline: none;
+            color: var(--text-main);
+            resize: none; 
+            line-height: 1.4;
+            min-height: 2.5em;
+            overflow-y: hidden;
+        }
+
+        [data-theme="cyberpunk"] ::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            opacity: 0.8;
+            cursor: pointer;
+        }
+
+        /* Group Status Indicator */
+        .group-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            font-weight: bold;
+            background-color: #e2e8f0;
+            color: #64748b;
+            transition: all 0.3s;
+        }
+        .group-badge.active {
+            background-color: #dcfce7;
+            color: #166534;
+        }
+        .group-icon {
+            width: 12px;
+            height: 12px;
+        }
+    </style>
+</head>
+<body data-theme="default" class="theme-transition min-h-screen pb-24">
+
+    <!-- Header -->
+    <header class="sticky top-0 z-30 px-4 py-3 flex justify-between items-center shadow-sm" style="background-color: var(--header-bg); border-bottom: 1px solid var(--card-border);">
+        <div class="flex flex-col">
+            <h1 class="text-lg font-black tracking-tight flex items-center gap-2" style="color: var(--primary);">
+                PRO-TIMER
+                <span id="groupStatusBadge" class="group-badge">
+                    <svg class="group-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <span id="groupStatusText">LOCAL</span>
+                </span>
+            </h1>
+            <p id="currentTime" class="text-[10px] font-mono font-bold uppercase tracking-widest flex items-center gap-1.5" style="color: var(--text-sub);">
+                <span class="opacity-60">----/--/-- (--)</span>
+                <span>00:00:00</span>
+            </p>
+        </div>
+        <div class="flex gap-2">
+            <!-- Share Button -->
+            <button onclick="toggleShareModal()" class="p-2 rounded-full border transition-all active:scale-90" style="border-color: var(--card-border); color: var(--text-sub);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </button>
+            <button onclick="toggleHelpModal()" class="p-2 rounded-full border transition-all active:scale-90" style="border-color: var(--card-border); color: var(--text-sub);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </button>
+            <button onclick="toggleThemeModal()" class="p-2 rounded-full border transition-all active:scale-90" style="border-color: var(--card-border); color: var(--text-sub);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+            <button onclick="saveTask()" id="saveButton" class="text-white px-5 py-2 rounded-full text-xs font-bold shadow-md active:scale-95 transition-all" style="background-color: var(--primary);">
+                保存
+            </button>
+        </div>
+    </header>
+
+    <!-- Modals -->
+    <!-- Help Modal -->
+    <div id="helpModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm">
+        <div class="w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto custom-scrollbar" style="background-color: var(--bg-card);">
+            <div class="flex justify-between items-center border-b pb-3 sticky top-0 bg-inherit z-10" style="border-color: var(--card-border);">
+                <h3 class="font-black text-lg flex items-center gap-2" style="color: var(--text-main);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-indigo-500"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    PRO-TIMER ガイド
+                </h3>
+                <button onclick="toggleHelpModal()" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            
+            <div class="space-y-6 text-sm" style="color: var(--text-main);">
+                
+                <!-- Section 1: 基本操作 -->
+                <div class="space-y-2">
+                    <h4 class="font-black text-xs uppercase tracking-wider opacity-50 border-b pb-1" style="border-color: var(--card-border);">1. 計算 (Calculator)</h4>
+                    <p class="text-xs leading-relaxed opacity-80">
+                        生産条件を入力すると、終了予定時刻をリアルタイムで算出します。
+                    </p>
+                    <ul class="text-xs space-y-1.5 opacity-80 pl-2">
+                        <li class="flex gap-2"><span class="font-bold text-indigo-500">▶</span> <span><strong class="font-bold">開始時刻:</strong> デフォルトは現在時刻。「今」ボタンで即座にリセット可能。</span></li>
+                        <li class="flex gap-2"><span class="font-bold text-indigo-500">▶</span> <span><strong class="font-bold">入力項目:</strong> 生産数・取り数・1箱の入数・サイクル秒・稼働率を入力してください。</span></li>
+                        <li class="flex gap-2"><span class="font-bold text-indigo-500">▶</span> <span><strong class="font-bold">保存:</strong> 右上の「保存」で計算結果を履歴に残せます。</span></li>
+                    </ul>
+                </div>
+
+                <!-- Section 2: 完了表 -->
+                <div class="space-y-2">
+                    <h4 class="font-black text-xs uppercase tracking-wider opacity-50 border-b pb-1" style="border-color: var(--card-border);">2. 完了表 (Timeline)</h4>
+                    <p class="text-xs leading-relaxed opacity-80">
+                        箱ごとの完了予定時刻リストです。進捗管理に使用します。
+                    </p>
+                    <ul class="text-xs space-y-1.5 opacity-80 pl-2">
+                        <li class="flex gap-2"><span class="font-bold text-teal-500">▶</span> <span><strong class="font-bold">時刻調整:</strong> 「+」「-」ボタンや時刻タップで遅れを反映できます。</span></li>
+                        <li class="flex gap-2"><span class="font-bold text-teal-500">▶</span> <span><strong class="font-bold">「今」ボタン:</strong> その箱の完了を現時刻として記録し、以降の予定を再計算します。</span></li>
+                        <li class="flex gap-2"><span class="font-bold text-teal-500">▶</span> <span><strong class="font-bold">メモ:</strong> トラブルや休憩などをメモ欄に残せます。複数行入力可能です。</span></li>
+                    </ul>
+                </div>
+
+                <!-- Section 3: 履歴と共有 -->
+                <div class="space-y-2">
+                    <h4 class="font-black text-xs uppercase tracking-wider opacity-50 border-b pb-1" style="border-color: var(--card-border);">3. 履歴 & クラウド共有</h4>
+                    <p class="text-xs leading-relaxed opacity-80">
+                        保存したタスクの管理やデータの共有を行います。
+                    </p>
+                    <ul class="text-xs space-y-1.5 opacity-80 pl-2">
+                        <li class="flex gap-2"><span class="font-bold text-orange-500">▶</span> <span><strong class="font-bold">ローカルモード:</strong> 通常時。履歴はあなたの端末だけに保存されます。</span></li>
+                        <li class="flex gap-2"><span class="font-bold text-orange-500">▶</span> <span><strong class="font-bold">クラウドモード:</strong> ヘッダーの「共有」ボタンからグループIDで接続すると、履歴リストがグループ全員と同期されます。チームでの進捗共有に最適です。</span></li>
+                        <li class="flex gap-2"><span class="font-bold text-orange-500">▶</span> <span><strong class="font-bold">機能:</strong> アラーム設定（音声読み上げ）、CSV出力、詳細編集が可能です。</span></li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="pt-2">
+                <button onclick="toggleHelpModal()" class="w-full py-3 rounded-xl font-bold text-white shadow-lg active:scale-95 transition-all text-sm" style="background-color: var(--primary);">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Theme Modal -->
+    <div id="themeModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm">
+        <div class="w-full max-w-xs rounded-3xl p-6 shadow-2xl space-y-4" style="background-color: var(--bg-card);">
+            <h3 class="font-bold text-center mb-4">テーマ切り替え</h3>
+            <button onclick="setTheme('default')" class="w-full py-3 rounded-xl border-2 font-bold mb-2 transition-all active:scale-95" style="border-color: #4f46e5; color: #4f46e5;">通常モード</button>
+            <button onclick="setTheme('cyberpunk')" class="w-full py-3 rounded-xl border-2 font-bold mb-2 transition-all active:scale-95 bg-black" style="border-color: #00ffcc; color: #00ffcc; font-family: 'Share Tech Mono';">Cyberpunk 2077</button>
+            <button onclick="setTheme('marunouchi')" class="w-full py-3 rounded-xl border-2 font-bold transition-all active:scale-95" style="border-color: #c9a063; color: #5d544b; font-family: 'Shippori Mincho';">丸の内OL</button>
+            <button onclick="toggleThemeModal()" class="w-full text-center text-xs font-bold pt-4" style="color: var(--text-sub);">閉じる</button>
+        </div>
+    </div>
+
+    <!-- Share Modal (Cloud Group) -->
+    <div id="shareModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm">
+        <div class="w-full max-w-xs rounded-3xl p-6 shadow-2xl space-y-6" style="background-color: var(--bg-card);">
+            <div class="text-center">
+                <h3 class="font-black text-lg" style="color: var(--text-main);">クラウド履歴共有</h3>
+                <p class="text-xs opacity-60 mt-1" style="color: var(--text-sub);">グループに参加して履歴を共有管理します</p>
+            </div>
+
+            <div id="shareConnectionPanel" class="space-y-4">
+                <div class="space-y-2">
+                    <label class="text-[10px] font-bold opacity-50 uppercase block">グループIDを入力</label>
+                    <div class="flex flex-col gap-2">
+                        <input type="text" inputmode="numeric" pattern="\d*" id="joinGroupIdInput" placeholder="000000" class="w-full bg-slate-100 rounded-xl px-4 py-3 text-center text-lg font-black tracking-widest border border-slate-200 outline-none focus:border-indigo-500 transition-colors">
+                        <button onclick="joinGroup()" class="w-full py-3 bg-indigo-500 text-white rounded-xl font-bold text-sm shadow active:scale-95 transition-all">グループに参加 / 履歴を表示</button>
+                    </div>
+                </div>
+                <div class="relative py-2">
+                    <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-200"></div></div>
+                    <div class="relative flex justify-center text-xs"><span class="px-2 bg-white text-slate-400 font-bold" style="background-color: var(--bg-card);">OR</span></div>
+                </div>
+                <button onclick="createGroup()" class="w-full py-3 rounded-xl border-2 border-indigo-100 bg-indigo-50 text-indigo-600 font-bold text-sm hover:bg-indigo-100 active:scale-95 transition-all">
+                    新規グループIDを発行
+                </button>
+            </div>
+
+            <div id="shareStatusPanel" class="hidden space-y-4 text-center">
+                <div class="p-4 rounded-2xl bg-green-50 border border-green-100">
+                    <p class="text-[10px] font-bold text-green-600 uppercase mb-1">Connected Group</p>
+                    <p id="currentGroupIdDisplay" class="text-3xl font-black text-green-700 tracking-widest">---</p>
+                    <p class="text-[10px] text-green-600/70 mt-2">計算結果の保存先がクラウドになります</p>
+                </div>
+                <button onclick="leaveGroup()" class="w-full py-3 rounded-xl bg-red-50 text-red-500 font-bold text-sm hover:bg-red-100 active:scale-95 transition-all">
+                    切断してローカル履歴に戻る
+                </button>
+            </div>
+
+            <button onclick="toggleShareModal()" class="w-full text-center text-xs font-bold pt-2" style="color: var(--text-sub);">閉じる</button>
+        </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div id="confirmModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
+        <div class="w-full max-w-xs rounded-3xl p-6 shadow-2xl space-y-6 text-center" style="background-color: var(--bg-card);">
+            <div class="space-y-2">
+                <h3 class="font-black text-lg" style="color: var(--text-main);">履歴を全て削除</h3>
+                <p class="text-sm opacity-70" style="color: var(--text-sub);">現在のリスト上のデータがすべて消去されます。<br>共有中の場合、全員のデータが消えます。</p>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="toggleConfirmModal()" class="py-3 rounded-xl text-sm font-bold border" style="border-color: var(--card-border); color: var(--text-sub);">キャンセル</button>
+                <button onclick="executeClearAll()" class="py-3 rounded-xl text-sm font-bold text-white bg-red-500 shadow-lg shadow-red-200">削除する</button>
+            </div>
+        </div>
+    </div>
+
+    <main class="max-w-md mx-auto p-4 pb-12">
+
+        <!-- TAB 1: CALCULATOR -->
+        <section id="tab-calc" class="tab-content active space-y-4">
+            <div class="rounded-2xl p-4 shadow-sm border space-y-3" style="background-color: var(--bg-card); border-color: var(--card-border);">
+                <input type="text" id="taskTitle" placeholder="案件名 / 製品名" 
+                       class="w-full text-base font-bold placeholder:text-slate-300 border-none focus:ring-0 p-0 bg-transparent" style="color: var(--text-main);">
+                <div class="flex items-center gap-2">
+                    <div class="flex-1 flex items-center gap-2 rounded-xl px-3 py-2 border" style="background-color: var(--bg-body); border-color: var(--card-border);">
+                        <svg class="opacity-40" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        <input type="datetime-local" id="startTimeInput" class="bg-transparent border-none focus:ring-0 text-sm font-mono w-full outline-none" style="color: var(--text-main);">
+                    </div>
+                    <button onclick="setDefaultStartTime(); window.showToast('現在時刻に更新しました');" class="h-10 px-4 rounded-xl border-2 font-bold text-xs active:scale-95 transition-all" style="border-color: var(--primary); color: var(--primary);">
+                        今
+                    </button>
+                </div>
+            </div>
+
+            <div class="card-result rounded-3xl p-6 shadow-xl relative overflow-hidden transition-all" style="background-color: #0f172a; color: white;">
+                <h2 class="text-[10px] font-bold uppercase tracking-[0.2em] mb-4 opacity-70">Final Completion</h2>
+                <div class="space-y-1">
+                    <div id="finishDate" class="text-sm font-bold opacity-60">----年--月--日</div>
+                    <div id="finishTime" class="text-5xl font-black tracking-tighter">--:--:--</div>
+                </div>
+                <div class="mt-6 flex justify-between items-end border-t border-white/10 pt-4">
+                    <div>
+                        <span class="text-[9px] opacity-50 uppercase font-bold block">1箱あたり</span>
+                        <span id="timePerBoxDisplay" class="text-sm font-bold" style="color: var(--primary);">--分--秒</span>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-[9px] opacity-50 uppercase font-bold block">総ショット数</span>
+                        <span id="finalShotsDisplay" class="text-sm font-mono opacity-80">0 sh</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div class="p-3 rounded-2xl border transition-all" style="background-color: var(--bg-card); border-color: var(--card-border);">
+                    <label class="text-[10px] font-bold opacity-50 uppercase block mb-1">生産予定数</label>
+                    <input type="number" id="quantity" value="1000" class="w-full text-lg font-black bg-transparent focus:outline-none" style="color: var(--text-main);">
+                </div>
+                <div class="p-3 rounded-2xl border transition-all" style="background-color: var(--bg-card); border-color: var(--card-border);">
+                    <label class="text-[10px] font-bold opacity-50 uppercase block mb-1">取り数</label>
+                    <input type="number" id="cavities" value="4" class="w-full text-lg font-black bg-transparent focus:outline-none" style="color: var(--text-main);">
+                </div>
+                <div class="p-3 rounded-2xl border transition-all" style="background-color: var(--bg-card); border-color: var(--accent);">
+                    <label class="text-[10px] font-bold uppercase block mb-1" style="color: var(--primary);">1箱の入数</label>
+                    <input type="number" id="qtyPerBox" value="100" class="w-full text-lg font-black focus:outline-none bg-transparent" style="color: var(--primary);">
+                </div>
+                <div class="p-3 rounded-2xl border transition-all flex flex-col justify-between" style="background-color: var(--bg-card); border-color: var(--accent);">
+                    <label class="text-[10px] font-bold uppercase block" style="color: var(--primary);">総箱数</label>
+                    <div id="totalBoxesDisplay" class="text-lg font-black" style="color: var(--primary);">10</div>
+                </div>
+            </div>
+
+            <div class="rounded-2xl p-4 border space-y-4 transition-all" style="background-color: var(--bg-card); border-color: var(--card-border);">
+                <div class="flex justify-between items-center border-b pb-3 border-slate-100">
+                    <div class="flex items-center gap-2">
+                        <svg class="text-indigo-500" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m3 12 2-2 4 4 10-10"/></svg>
+                        <span class="text-xs font-bold" style="color: var(--text-main);">時刻変更時に前の箱も連動</span>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="shiftModeGlobal" checked onchange="saveAppConfig()">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <svg style="color: var(--primary);" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+                        <span class="text-xs font-bold" style="color: var(--text-main);">通知デフォルト</span>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="alarmEnabledDefault" checked onchange="saveAppConfig()">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="flex items-center gap-4 pt-1">
+                    <label class="text-[10px] font-bold opacity-50 uppercase block">通知タイミング</label>
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="alarmLeadTimeDefault" value="5" onchange="saveAppConfig()" class="w-12 text-center text-sm font-black border-b border-slate-300 bg-transparent focus:outline-none" style="color: var(--text-main);">
+                        <span class="text-[10px] font-bold opacity-50">分前</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rounded-2xl p-4 border grid grid-cols-2 gap-4 transition-all" style="background-color: var(--bg-card); border-color: var(--card-border);">
+                <div>
+                    <label class="text-[10px] font-bold opacity-50 uppercase block mb-1">サイクル(秒)</label>
+                    <input type="number" step="0.1" id="cycleTime" value="15.0" class="w-full text-sm font-bold bg-transparent focus:outline-none" style="color: var(--text-main);">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold opacity-50 uppercase block mb-1">稼働率(%)</label>
+                    <input type="number" id="efficiency" value="95" class="w-full text-sm font-bold bg-transparent focus:outline-none" style="color: var(--text-main);">
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: TIMELINE -->
+        <section id="tab-timeline" class="tab-content space-y-4">
+            <div class="flex justify-between items-center px-2">
+                <div class="flex items-center gap-2">
+                    <h2 class="text-xs font-bold opacity-60 uppercase tracking-widest">Completion Timeline</h2>
+                </div>
+                <div class="text-[10px] text-slate-400 font-bold">※ローカルで動作中</div>
+            </div>
+            <div id="boxTimeline" class="space-y-2 max-h-[70vh] overflow-y-auto custom-scrollbar text-center">数値を入力してください</div>
+        </section>
+
+        <!-- TAB 3: HISTORY -->
+        <section id="tab-history" class="tab-content space-y-4">
+            <div class="flex justify-between items-center px-2">
+                <div class="flex flex-col">
+                    <h2 class="text-sm font-bold opacity-60 uppercase tracking-widest">History</h2>
+                    <span id="historySourceLabel" class="text-[9px] text-slate-400">※ローカル保存（個人）</span>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="document.getElementById('csvUploadInput').click()" class="text-[10px] font-bold text-indigo-500 uppercase tracking-wider flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                        Upload
+                    </button>
+                    <button onclick="downloadAllTasksCSV()" class="text-[10px] font-bold text-teal-500 uppercase tracking-wider flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                        All CSV
+                    </button>
+                    <button onclick="triggerClearAll()" class="text-[10px] font-bold text-red-500 uppercase tracking-wider ml-1">Clear All</button>
+                </div>
+            </div>
+            <input type="file" id="csvUploadInput" class="hidden" accept=".csv" multiple onchange="handleCSVUpload(this)">
+            <div id="taskList" class="space-y-4"></div>
+        </section>
+
+    </main>
+    
+    <!-- Footer Debug -->
+    <div class="fixed bottom-20 left-4 text-[9px] font-mono text-slate-300 pointer-events-none z-0 opacity-0 hover:opacity-100 transition-opacity">
+        <div id="debugUser">UID: ---</div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="fixed bottom-0 left-0 right-0 border-t flex justify-around items-center safe-area-bottom z-40 shadow-lg" style="background-color: var(--nav-bg); border-color: var(--card-border);">
+        <button onclick="switchTab('calc')" id="nav-calc" class="flex flex-col items-center py-3 px-6 transition-all" style="color: var(--primary);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 11h10"/><path d="M7 15h10"/><path d="M7 7h10"/></svg>
+            <span class="text-[9px] font-bold mt-1">計算</span>
+        </button>
+        <button onclick="switchTab('timeline')" id="nav-timeline" class="flex flex-col items-center py-3 px-6 transition-all" style="color: var(--text-sub);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+            <span class="text-[9px] font-bold mt-1">完了表</span>
+        </button>
+        <button onclick="switchTab('history')" id="nav-history" class="flex flex-col items-center py-3 px-6 transition-all" style="color: var(--text-sub);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
+            <span class="text-[9px] font-bold mt-1">履歴</span>
+        </button>
+    </nav>
+
+    <div id="toast" class="hidden fixed bottom-24 left-1/2 -translate-x-1/2 bg-slate-800/90 backdrop-blur text-white px-6 py-3 rounded-full text-xs font-bold shadow-2xl z-50"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Initialize Firebase
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        let userId = null;
+        let currentGroupId = null;
+        let unsubscribeGroup = null;
+        let cloudTasks = []; 
+        let localTasks = [];
+
+        // Core variables for calculator
+        let currentBoxSchedule = [];
+        let currentTheme = 'default';
+        let notifiedBoxesMap = new Set(); 
+        let manualDelays = {}; 
+        let manualMemos = {}; 
+        let expandedTaskIds = new Set();
+
+        // Get DOM elements safely inside functions or after load
+        const startTimeInput = document.getElementById('startTimeInput');
+        const taskTitleInput = document.getElementById('taskTitle');
+        const quantityInput = document.getElementById('quantity');
+        const cavitiesInput = document.getElementById('cavities');
+        const qtyPerBoxInput = document.getElementById('qtyPerBox');
+        const cycleTimeInput = document.getElementById('cycleTime');
+        const efficiencyInput = document.getElementById('efficiency');
+        const alarmEnabledDefaultInput = document.getElementById('alarmEnabledDefault');
+        const alarmLeadTimeDefaultInput = document.getElementById('alarmLeadTimeDefault');
+        const shiftModeGlobalInput = document.getElementById('shiftModeGlobal');
+        const finishDateDisplay = document.getElementById('finishDate');
+        const finishTimeDisplay = document.getElementById('finishTime');
+        const timePerBoxDisplay = document.getElementById('timePerBoxDisplay');
+        const finalShotsDisplay = document.getElementById('finalShotsDisplay');
+        const totalBoxesDisplay = document.getElementById('totalBoxesDisplay');
+        const boxTimeline = document.getElementById('boxTimeline');
+        const currentTimeDisplay = document.getElementById('currentTime');
+        const taskListContainer = document.getElementById('taskList');
+
+        const STORAGE_KEY_TASKS = 'pro_timer_tasks';
+        const STORAGE_KEY_THEME = 'pro_timer_theme';
+        const STORAGE_KEY_CONFIG = 'pro_timer_config';
+
+        // Robust Auth
+        const initAuth = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Auth failed", error);
+                try { await signInAnonymously(auth); } catch(e) { console.error("Fallback failed", e); }
+            }
+        };
+        initAuth();
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                userId = user.uid;
+                document.getElementById('debugUser').textContent = `UID: ${userId.slice(0, 5)}...`;
+            } else {
+                userId = null;
+                document.getElementById('debugUser').textContent = `UID: ---`;
+            }
+        });
+
+        function cleanObject(obj) {
+            return JSON.parse(JSON.stringify(obj));
+        }
+
+        // --- Auto Resize Textarea ---
+        window.autoResize = (el) => {
+            el.style.height = 'auto';
+            el.style.height = (el.scrollHeight) + 'px';
+        };
+
+        function adjustAllTextareas() {
+            document.querySelectorAll('.memo-input').forEach(el => {
+                window.autoResize(el);
+            });
+        }
+
+        // --- Room/Group Functions ---
+        window.toggleShareModal = () => document.getElementById('shareModal').classList.toggle('hidden');
+
+        window.createGroup = () => {
+            const groupId = Math.floor(100000 + Math.random() * 900000).toString();
+            joinGroupLogic(groupId);
+        };
+
+        window.joinGroup = () => {
+            const input = document.getElementById('joinGroupIdInput');
+            const groupId = input.value.trim();
+            if (groupId.length !== 6) { window.showToast("6桁のIDを入力してください"); return; }
+            joinGroupLogic(groupId);
+        };
+
+        function joinGroupLogic(groupId) {
+            if (!userId) { window.showToast("接続エラー: 少し待って再試行してください"); return; }
+            
+            if (unsubscribeGroup) unsubscribeGroup();
+            currentGroupId = groupId;
+            
+            const collectionPath = `group_${groupId}_history`;
+            const q = collection(db, 'artifacts', appId, 'public', 'data', collectionPath);
+            
+            unsubscribeGroup = onSnapshot(q, (snapshot) => {
+                cloudTasks = [];
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    data.docId = doc.id; 
+                    cloudTasks.push(data);
+                });
+                cloudTasks.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+                
+                renderTasks();
+            }, (error) => {
+                console.error("Listener error", error);
+                window.showToast("同期エラーが発生しました");
+            });
+
+            updateShareUI(true, groupId);
+            window.showToast(`グループ ${groupId} に参加しました`);
+            switchTab('history');
+        }
+
+        window.leaveGroup = () => {
+            if (unsubscribeGroup) unsubscribeGroup();
+            unsubscribeGroup = null;
+            currentGroupId = null;
+            cloudTasks = [];
+            updateShareUI(false);
+            renderTasks();
+            window.showToast("グループから切断しました");
+        };
+
+        function updateShareUI(connected, groupId = "") {
+            const panelConn = document.getElementById('shareConnectionPanel');
+            const panelStatus = document.getElementById('shareStatusPanel');
+            const badge = document.getElementById('groupStatusBadge');
+            const statusText = document.getElementById('groupStatusText');
+            const idDisplay = document.getElementById('currentGroupIdDisplay');
+            const historyLabel = document.getElementById('historySourceLabel');
+            const saveButton = document.getElementById('saveButton');
+
+            if (connected) {
+                panelConn.classList.add('hidden');
+                panelStatus.classList.remove('hidden');
+                badge.classList.add('active');
+                statusText.textContent = "CLOUD: " + groupId;
+                idDisplay.textContent = groupId;
+                historyLabel.textContent = `※クラウド共有中 (Group: ${groupId})`;
+                historyLabel.classList.add('text-green-600', 'font-bold');
+                historyLabel.classList.remove('text-slate-400');
+                saveButton.textContent = "共有保存";
+            } else {
+                panelConn.classList.remove('hidden');
+                panelStatus.classList.add('hidden');
+                badge.classList.remove('active');
+                statusText.textContent = "LOCAL";
+                historyLabel.textContent = `※ローカル保存（個人）`;
+                historyLabel.classList.remove('text-green-600', 'font-bold');
+                historyLabel.classList.add('text-slate-400');
+                saveButton.textContent = "保存";
+            }
+        }
+
+        // --- Core Helpers ---
+        function dateToIsoLocal(date) {
+            if (!date || isNaN(date.getTime())) return "";
+            const z = date.getTimezoneOffset() * 60 * 1000;
+            const local = new Date(date - z);
+            return local.toISOString().slice(0, 16);
+        }
+
+        function parseDateTimeString(str) {
+            if (!str) return null;
+            let clean = str.replace(/年|月/g, '-').replace(/日/g, ' ').replace(/\//g, '-').trim();
+            const dt = new Date(clean);
+            return isNaN(dt.getTime()) ? null : dt;
+        }
+
+        function loadPersistence() {
+            const savedTasks = localStorage.getItem(STORAGE_KEY_TASKS);
+            if (savedTasks) {
+                localTasks = JSON.parse(savedTasks);
+                renderTasks();
+            }
+            const savedTheme = localStorage.getItem(STORAGE_KEY_THEME);
+            if (savedTheme) applyTheme(savedTheme);
+
+            const savedConfig = localStorage.getItem(STORAGE_KEY_CONFIG);
+            if (savedConfig) {
+                const config = JSON.parse(savedConfig);
+                shiftModeGlobalInput.checked = config.shiftMode ?? true;
+                alarmEnabledDefaultInput.checked = config.alarmEnabledDefault ?? true;
+                alarmLeadTimeDefaultInput.value = config.alarmLeadTimeDefault ?? 5;
+            }
+        }
+
+        function savePersistence() {
+            localStorage.setItem(STORAGE_KEY_TASKS, JSON.stringify(localTasks));
+        }
+
+        window.saveAppConfig = () => {
+            const config = {
+                shiftMode: shiftModeGlobalInput.checked,
+                alarmEnabledDefault: alarmEnabledDefaultInput.checked,
+                alarmLeadTimeDefault: alarmLeadTimeDefaultInput.value
+            };
+            localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(config));
+        };
+
+        window.setTheme = (theme) => {
+            applyTheme(theme);
+            localStorage.setItem(STORAGE_KEY_THEME, theme);
+            toggleThemeModal();
+        };
+
+        function applyTheme(theme) {
+            document.body.setAttribute('data-theme', theme);
+            currentTheme = theme;
+            const activeTab = document.querySelector('.tab-content.active')?.id.split('-')[1] || 'calc';
+            switchTab(activeTab);
+        }
+
+        window.toggleHelpModal = () => document.getElementById('helpModal').classList.toggle('hidden');
+        window.toggleThemeModal = () => document.getElementById('themeModal').classList.toggle('hidden');
+        window.toggleConfirmModal = () => document.getElementById('confirmModal').classList.toggle('hidden');
+
+        window.showToast = (msg) => {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 5000);
+        };
+
+        window.switchTab = (tabId) => {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            const target = document.getElementById(`tab-${tabId}`);
+            if (target) target.classList.add('active');
+            
+            const primaryColor = getComputedStyle(document.body).getPropertyValue('--primary').trim();
+            const subColor = getComputedStyle(document.body).getPropertyValue('--text-sub').trim();
+            document.querySelectorAll('nav button').forEach(btn => btn.style.color = subColor);
+            const activeNav = document.getElementById(`nav-${tabId}`);
+            if (activeNav) activeNav.style.color = primaryColor;
+            window.scrollTo(0, 0);
+            
+            // Adjust textareas after tab switch because scrollHeight might be 0 when hidden
+            setTimeout(adjustAllTextareas, 50);
+        };
+
+        window.setDefaultStartTime = () => {
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            startTimeInput.value = now.toISOString().slice(0, 16);
+            calculate(); 
+        };
+
+        function updateClock() {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short' });
+            const timeStr = now.toLocaleTimeString('ja-JP', { hour12: false });
+            currentTimeDisplay.innerHTML = `<span class="opacity-60 mr-1.5">${dateStr}</span><span>${timeStr}</span>`;
+            checkAlarms(now);
+        }
+
+        function calculate() {
+            const qty = parseFloat(quantityInput.value) || 0;
+            const cav = parseFloat(cavitiesInput.value) || 1;
+            const boxQty = parseFloat(qtyPerBoxInput.value) || 1;
+            const cycleTime = parseFloat(cycleTimeInput.value) || 0;
+            const efficiency = (parseFloat(efficiencyInput.value) || 100) / 100;
+
+            const totalShots = Math.ceil(qty / cav);
+            const totalBoxes = Math.ceil(qty / boxQty);
+            
+            totalBoxesDisplay.textContent = totalBoxes;
+            finalShotsDisplay.textContent = `${totalShots.toLocaleString()} sh`;
+
+            if (qty <= 0 || cycleTime <= 0 || efficiency <= 0) {
+                resetDisplay();
+                currentBoxSchedule = [];
+                return null;
+            }
+
+            const secPerShot = cycleTime / efficiency;
+            const secPerBox = (boxQty / cav) * secPerShot;
+
+            const boxM = Math.floor(secPerBox / 60);
+            const boxS = Math.floor(secPerBox % 60);
+            timePerBoxDisplay.textContent = `${boxM}分${boxS}秒`;
+            
+            let start = new Date(startTimeInput.value);
+            if (isNaN(start.getTime())) start = new Date();
+
+            const timelineResult = generateTimeline(start, totalBoxes, boxQty, cav, secPerShot, manualDelays, manualMemos, null);
+            currentBoxSchedule = timelineResult.schedule;
+
+            if (currentBoxSchedule.length > 0) {
+                const lastBox = currentBoxSchedule[currentBoxSchedule.length - 1];
+                const finishDateObj = new Date(lastBox.absoluteTime);
+                const dateStr = finishDateObj.toLocaleDateString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric', weekday: 'short' });
+                const timeStr = finishDateObj.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+
+                finishDateDisplay.textContent = dateStr;
+                finishTimeDisplay.textContent = timeStr;
+
+                // Adjust textareas in the calculator tab
+                setTimeout(adjustAllTextareas, 0);
+
+                return { 
+                    finishDate: dateStr, 
+                    finishTime: timeStr, 
+                    shots: totalShots,
+                    boxes: totalBoxes,
+                    startDateTime: start.toLocaleString('ja-JP', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+                };
+            }
+            return null;
+        }
+
+        function generateTimeline(start, totalBoxes, boxQty, cav, secPerShot, delays, memos, taskId) {
+            let html = '';
+            const schedule = [];
+            let cumulativeDelay = 0; 
+
+            for (let i = 1; i <= totalBoxes; i++) {
+                cumulativeDelay += (delays[i] || 0);
+                const shotsNeeded = Math.ceil((i * boxQty) / cav);
+                const theoreticalSeconds = shotsNeeded * secPerShot;
+                const boxFinishDate = new Date(start.getTime() + (theoreticalSeconds + cumulativeDelay) * 1000);
+
+                const boxDate = boxFinishDate.toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit' });
+                const boxTime = boxFinishDate.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', hour12: false });
+                const isoLocal = dateToIsoLocal(boxFinishDate);
+                const currentMemo = memos[i] || "";
+                
+                schedule.push({ num: i, date: boxDate, time: boxTime, absoluteTime: boxFinishDate.getTime(), delay: delays[i] || 0, memo: currentMemo });
+
+                if (i <= 200) {
+                    const isAdjusted = delays[i] && delays[i] !== 0;
+                    html += `
+                        <div class="flex flex-col p-2 rounded-2xl border transition-all shadow-sm mb-2" style="background-color: var(--bg-card); border-color: var(--card-border);">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <span class="w-7 h-7 flex items-center justify-center rounded-xl text-[10px] font-black border" style="background-color: var(--bg-body); color: var(--primary); border-color: var(--accent);">${i}</span>
+                                    <div class="flex flex-col">
+                                        <span class="text-[9px] font-bold opacity-70" style="color: var(--text-sub);">箱目</span>
+                                        <button onclick="event.stopPropagation(); setBoxToNow(${taskId}, ${i})" class="px-1 py-0.5 bg-indigo-600 text-white rounded text-[9px] font-bold active:scale-95 transition-all">今</button>
+                                    </div>
+                                </div>
+                                <div class="flex flex-col items-end gap-1 overflow-hidden">
+                                    <div class="flex items-center gap-1">
+                                        <div class="flex flex-col items-end">
+                                            <input type="datetime-local" class="dt-input" value="${isoLocal}" onchange="updateBoxTimeManual(${taskId}, ${i}, this.value)">
+                                            ${isAdjusted ? `<span class="text-[8px] font-bold text-orange-500 uppercase leading-none">調整済み</span>` : ''}
+                                        </div>
+                                        <div class="flex gap-0.5 border-l pl-1" style="border-color: var(--card-border);">
+                                            <button onclick="event.stopPropagation(); adjustBoxDelay(${taskId}, ${i}, 60)" class="w-5 h-5 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-[10px] font-bold active:bg-indigo-100 transition-colors">+</button>
+                                            <button onclick="event.stopPropagation(); adjustBoxDelay(${taskId}, ${i}, -60)" class="w-5 h-5 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-[10px] font-bold active:bg-indigo-100 transition-colors">-</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <textarea class="memo-input" rows="1" placeholder="メモを入力..." oninput="window.autoResize(this)" onchange="updateBoxMemoManual(${taskId}, ${i}, this.value)" onclick="event.stopPropagation()">${currentMemo}</textarea>
+                        </div>
+                    `;
+                }
+            }
+            
+            if (!taskId) {
+                boxTimeline.innerHTML = html || '<div class="text-center py-10 opacity-30 italic">数値を入力してください</div>';
+            }
+            
+            return { schedule, html };
+        }
+
+        // --- Universal Update Helper ---
+        async function updateTaskProperty(taskId, updates) {
+            if (currentGroupId) {
+                // Update Cloud Task
+                const task = cloudTasks.find(t => t.id === taskId);
+                if (task && task.docId) {
+                    try {
+                        const collectionPath = `group_${currentGroupId}_history`;
+                        const docRef = doc(db, 'artifacts', appId, 'public', 'data', collectionPath, task.docId);
+                        await updateDoc(docRef, updates);
+                    } catch (e) {
+                        console.error("Cloud update failed", e);
+                        window.showToast("更新エラー");
+                    }
+                }
+            } else {
+                // Update Local Task
+                const task = localTasks.find(t => t.id === taskId);
+                if (task) {
+                    // Deep merge or specific property set
+                    for (const key in updates) {
+                        if (key.includes('.')) {
+                            const parts = key.split('.');
+                            let target = task;
+                            for (let i = 0; i < parts.length - 1; i++) {
+                                if (!target[parts[i]]) target[parts[i]] = {};
+                                target = target[parts[i]];
+                            }
+                            target[parts[parts.length - 1]] = updates[key];
+                        } else {
+                            task[key] = updates[key];
+                        }
+                    }
+                    savePersistence();
+                    renderTasks();
+                }
+            }
+        }
+
+        window.updateTaskTitle = (taskId, newTitle) => {
+            updateTaskProperty(taskId, { title: newTitle });
+        };
+
+        window.updateBoxMemoManual = (taskId, boxNum, text) => {
+            if (!taskId) {
+                manualMemos[boxNum] = text;
+                calculate();
+            } else {
+                if (currentGroupId) {
+                    updateTaskProperty(taskId, { [`manualMemos.${boxNum}`]: text });
+                } else {
+                    const task = localTasks.find(t => t.id === taskId);
+                    if (task) {
+                        if (!task.manualMemos) task.manualMemos = {};
+                        task.manualMemos[boxNum] = text;
+                        savePersistence();
+                        renderTasks();
+                    }
+                }
+            }
+        };
+
+        window.updateBoxTimeManual = (taskId, boxNum, newIsoValue) => {
+            const targetTime = new Date(newIsoValue);
+            if (isNaN(targetTime.getTime())) return;
+
+            // Scroll restoration setup
+            const scrollTargetId = taskId ? `boxlist-${taskId}` : 'boxTimeline';
+            const internalList = document.getElementById(scrollTargetId);
+            const internalScrollPos = internalList ? internalList.scrollTop : 0;
+            const windowScrollPos = window.scrollY;
+
+            // Safe DOM access for settings
+            const globalShift = document.getElementById('shiftModeGlobal').checked;
+            
+            if (!taskId) {
+                // Calculator Logic
+                const currentBox = currentBoxSchedule[boxNum - 1];
+                if (currentBox) {
+                    const diffMs = targetTime.getTime() - currentBox.absoluteTime;
+                    if (globalShift) {
+                        const start = new Date(startTimeInput.value);
+                        startTimeInput.value = dateToIsoLocal(new Date(start.getTime() + diffMs));
+                    } else {
+                        manualDelays[boxNum] = (manualDelays[boxNum] || 0) + (diffMs / 1000);
+                    }
+                    calculate();
+                    notifiedBoxesMap.clear();
+                }
+            } else {
+                // History Logic
+                const list = currentGroupId ? cloudTasks : localTasks;
+                const task = list.find(t => t.id === taskId);
+                if (task) {
+                    const currentBox = task.boxSchedule.find(b => b.num === boxNum);
+                    if (currentBox) {
+                        const diffMs = targetTime.getTime() - currentBox.absoluteTime;
+                        
+                        if (globalShift) {
+                            const oldStart = new Date(task.params.startIso);
+                            const newStartIso = dateToIsoLocal(new Date(oldStart.getTime() + diffMs));
+                            const secPerShot = task.params.cycleTime / (task.params.efficiency / 100);
+                            const result = generateTimeline(new Date(newStartIso), task.boxes, task.params.qtyPerBox, task.params.cavities, secPerShot, task.manualDelays || {}, task.manualMemos || {}, task.id);
+                            
+                            const updates = {
+                                "params.startIso": newStartIso,
+                                "startDateTime": new Date(newStartIso).toLocaleString('ja-JP', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
+                                "boxSchedule": result.schedule,
+                                "finishFull": `${result.schedule[result.schedule.length-1].date} ${result.schedule[result.schedule.length-1].time}` 
+                            };
+
+                            updateTaskProperty(taskId, updates);
+
+                        } else {
+                            const newDelay = (task.manualDelays?.[boxNum] || 0) + (diffMs / 1000);
+                            const start = new Date(task.params.startIso);
+                            const secPerShot = task.params.cycleTime / (task.params.efficiency / 100);
+                            const delays = { ...(task.manualDelays || {}), [boxNum]: newDelay };
+                            const result = generateTimeline(start, task.boxes, task.params.qtyPerBox, task.params.cavities, secPerShot, delays, task.manualMemos || {}, task.id);
+
+                            updateTaskProperty(taskId, {
+                                [`manualDelays.${boxNum}`]: newDelay,
+                                "boxSchedule": result.schedule,
+                                "finishFull": `${result.schedule[result.schedule.length-1].date} ${result.schedule[result.schedule.length-1].time}`
+                            });
+                        }
+                    }
+                }
+            }
+            
+            // Execute scroll restoration
+            requestAnimationFrame(() => {
+                window.scrollTo(0, windowScrollPos);
+                const newList = document.getElementById(scrollTargetId);
+                if (newList) newList.scrollTop = internalScrollPos;
+            });
+        };
+
+        window.setBoxToNow = (taskId, boxNum) => {
+            const now = new Date();
+            const iso = dateToIsoLocal(now);
+            window.updateBoxTimeManual(taskId, boxNum, iso);
+            window.showToast(`${boxNum}箱目を現時刻に合わせました`);
+        };
+
+        window.adjustBoxDelay = (taskId, boxNum, deltaSeconds) => {
+            // Scroll restoration setup
+            const scrollTargetId = taskId ? `boxlist-${taskId}` : 'boxTimeline';
+            const internalList = document.getElementById(scrollTargetId);
+            const internalScrollPos = internalList ? internalList.scrollTop : 0;
+            const windowScrollPos = window.scrollY;
+
+            if (!taskId) {
+                manualDelays[boxNum] = (manualDelays[boxNum] || 0) + deltaSeconds;
+                calculate();
+                notifiedBoxesMap.clear();
+            } else {
+                const list = currentGroupId ? cloudTasks : localTasks;
+                const task = list.find(t => t.id === taskId);
+                if (task) {
+                    const newDelay = (task.manualDelays?.[boxNum] || 0) + deltaSeconds;
+                    const start = new Date(task.params.startIso);
+                    const secPerShot = task.params.cycleTime / (task.params.efficiency / 100);
+                    const delays = { ...(task.manualDelays || {}), [boxNum]: newDelay };
+                    const result = generateTimeline(start, task.boxes, task.params.qtyPerBox, task.params.cavities, secPerShot, delays, task.manualMemos || {}, task.id);
+
+                    updateTaskProperty(taskId, {
+                        [`manualDelays.${boxNum}`]: newDelay,
+                        "boxSchedule": result.schedule,
+                        "finishFull": `${result.schedule[result.schedule.length-1].date} ${result.schedule[result.schedule.length-1].time}`
+                    });
+                }
+            }
+
+            // Execute scroll restoration
+            requestAnimationFrame(() => {
+                window.scrollTo(0, windowScrollPos);
+                const newList = document.getElementById(scrollTargetId);
+                if (newList) newList.scrollTop = internalScrollPos;
+            });
+        };
+
+        window.toggleTaskAlarm = (id) => {
+            const list = currentGroupId ? cloudTasks : localTasks;
+            const t = list.find(x => x.id === id);
+            if (t) {
+                updateTaskProperty(id, { alarmEnabled: !t.alarmEnabled });
+            }
+        };
+
+        window.updateTaskAlarmLeadTime = (id, val) => {
+            updateTaskProperty(id, { alarmLeadTime: val });
+        };
+
+        function checkAlarms(now) {
+            const nowTime = now.getTime();
+            const targetTasks = currentGroupId ? cloudTasks : localTasks;
+            
+            targetTasks.forEach(task => {
+                if (!task.alarmEnabled) return;
+                const leadMs = (parseFloat(task.alarmLeadTime) || 0) * 60 * 1000;
+                task.boxSchedule.forEach(box => {
+                    const triggerTime = box.absoluteTime - leadMs;
+                    const notifyKey = `${task.id}-${box.num}`;
+                    if (nowTime >= triggerTime && nowTime < triggerTime + 1500 && !notifiedBoxesMap.has(notifyKey)) {
+                        triggerAlarm(task.title, box.num, task.alarmLeadTime);
+                        notifiedBoxesMap.add(notifyKey);
+                    }
+                });
+            });
+        }
+
+        function triggerAlarm(taskName, boxNum, leadTime) {
+            const message = `${taskName}の${boxNum}箱目の完成まで、残り${leadTime}分です。`;
+            showToast("ALARM: " + message);
+            if ('speechSynthesis' in window) {
+                speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(message);
+                utterance.lang = 'ja-JP';
+                utterance.rate = 1.0;
+                speechSynthesis.speak(utterance);
+            }
+        }
+
+        function resetDisplay() {
+            finishDateDisplay.textContent = "----年--月--日";
+            finishTimeDisplay.textContent = "--:--:--";
+            timePerBoxDisplay.textContent = "--分--秒";
+            manualDelays = {};
+            manualMemos = {};
+        }
+
+        window.saveTask = async () => {
+            const result = calculate();
+            if (!result) {
+                showToast("数値を入力してください");
+                return;
+            }
+            const title = taskTitleInput.value.trim() || "PLAN " + (Date.now());
+            const taskId = Date.now();
+            
+            const newTask = {
+                id: taskId,
+                title: title,
+                startDateTime: result.startDateTime,
+                finishFull: `${result.finishDate} ${result.finishTime}`,
+                boxes: result.boxes,
+                shots: result.shots,
+                boxSchedule: JSON.parse(JSON.stringify(currentBoxSchedule)), 
+                theme: currentTheme,
+                alarmEnabled: alarmEnabledDefaultInput.checked,
+                alarmLeadTime: alarmLeadTimeDefaultInput.value,
+                manualDelays: cleanObject(manualDelays),
+                manualMemos: cleanObject(manualMemos),
+                params: {
+                    quantity: parseFloat(quantityInput.value),
+                    cavities: parseFloat(cavitiesInput.value),
+                    qtyPerBox: parseFloat(qtyPerBoxInput.value),
+                    cycleTime: parseFloat(cycleTimeInput.value),
+                    efficiency: parseFloat(efficiencyInput.value),
+                    startIso: startTimeInput.value
+                },
+                createdAt: serverTimestamp() 
+            };
+
+            if (currentGroupId) {
+                try {
+                    const collectionPath = `group_${currentGroupId}_history`;
+                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', collectionPath), newTask);
+                    window.showToast("クラウドに履歴を保存しました");
+                } catch (e) {
+                    console.error(e);
+                    window.showToast("保存エラー: " + e.message);
+                }
+            } else {
+                localTasks.unshift(newTask);
+                savePersistence();
+                renderTasks();
+                window.showToast("ローカルに履歴を保存しました");
+            }
+
+            taskTitleInput.value = "";
+            manualDelays = {}; 
+            manualMemos = {};
+            switchTab('history');
+        };
+
+        // --- CSV Logic ---
+        function generateTaskCSVString(task) {
+            let csv = `案件名,${task.title}\n`;
+            csv += `開始日時,${task.startDateTime}\n`;
+            csv += `完了予定,${task.finishFull}\n`;
+            csv += `予定数,${task.params.quantity}\n`;
+            csv += `取り数,${task.params.cavities}\n`;
+            csv += `入数,${task.params.qtyPerBox}\n`;
+            csv += `サイクル,${task.params.cycleTime}\n`;
+            csv += `稼働率,${task.params.efficiency}\n`;
+            csv += `開始ISO,${task.params.startIso}\n\n`;
+            csv += `箱番号,完了日時,調整(秒),メモ\n`;
+            task.boxSchedule.forEach(box => {
+                const d = new Date(box.absoluteTime);
+                const z = d.getTimezoneOffset() * 60 * 1000;
+                const local = new Date(d - z);
+                const dt = local.toISOString().replace('T', ' ').slice(0, 19);
+                
+                const memo = (task.manualMemos && task.manualMemos[box.num] !== undefined) 
+                    ? task.manualMemos[box.num] 
+                    : (box.memo || "");
+                
+                csv += `${box.num},${dt},${task.manualDelays?.[box.num] || 0},"${memo.replace(/"/g, '""')}"\n`;
+            });
+            return csv;
+        }
+
+        window.downloadCSV = (id) => {
+            const list = currentGroupId ? cloudTasks : localTasks;
+            const task = list.find(t => t.id === id);
+            if (!task) return;
+            const blob = new Blob(["\ufeff" + generateTaskCSVString(task)], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `${task.title}.csv`;
+            link.click();
+            showToast("CSVを保存しました");
+        };
+
+        window.downloadAllTasksCSV = () => {
+            const list = currentGroupId ? cloudTasks : localTasks;
+            if (list.length === 0) {
+                showToast("履歴がありません");
+                return;
+            }
+            let combinedCSV = "\ufeff";
+            list.forEach((task, index) => {
+                combinedCSV += `[Task Start]\n`;
+                combinedCSV += generateTaskCSVString(task);
+                combinedCSV += `[Task End]\n\n`;
+            });
+            const blob = new Blob([combinedCSV], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `PRO_TIMER_HISTORY_BACKUP.csv`;
+            link.click();
+            showToast("全履歴を保存しました");
+        };
+
+        window.handleCSVUpload = async (input) => {
+            const files = Array.from(input.files);
+            if (files.length === 0) return;
+
+            // 一時的にパースしたタスクを保持する配列
+            const parsedTasks = [];
+
+            for (const file of files) {
+                try {
+                    let text = await file.text();
+                    text = text.replace(/^\ufeff/, '');
+
+                    const taskChunks = text.includes('[Task Start]') 
+                        ? text.split(/\[Task Start\]/).filter(c => c.trim()) 
+                        : [text];
+
+                    taskChunks.forEach(chunk => {
+                        const cleanChunk = chunk.replace('[Task End]', '').trim();
+                        const lines = cleanChunk.split(/\r\n|\n/);
+                        
+                        let taskData = {
+                            title: "Imported", startDateTime: "", finishFull: "",
+                            params: { quantity: 0, cavities: 1, qtyPerBox: 1, cycleTime: 1, efficiency: 100, startIso: "" }
+                        };
+                        
+                        const tableHeaderIdx = lines.findIndex(l => l.includes('箱番号'));
+                        if (tableHeaderIdx === -1) return;
+
+                        lines.slice(0, tableHeaderIdx).forEach(line => {
+                            const idx = line.indexOf(',');
+                            if (idx === -1) return;
+                            const key = line.substring(0, idx).trim();
+                            const val = line.substring(idx + 1).trim();
+                            
+                            if (key === '案件名') taskData.title = val;
+                            if (key === '開始日時') taskData.startDateTime = val;
+                            if (key === '完了予定') taskData.finishFull = val;
+                            if (key === '予定数') taskData.params.quantity = parseFloat(val);
+                            if (key === '取り数') taskData.params.cavities = parseFloat(val);
+                            if (key === '入数') taskData.params.qtyPerBox = parseFloat(val);
+                            if (key === 'サイクル') taskData.params.cycleTime = parseFloat(val);
+                            if (key === '稼働率') taskData.params.efficiency = parseFloat(val);
+                            if (key === '開始ISO') taskData.params.startIso = val;
+                        });
+
+                        const boxSchedule = [];
+                        const mDelays = {};
+                        const mMemos = {};
+
+                        for (let i = tableHeaderIdx + 1; i < lines.length; i++) {
+                            const line = lines[i].trim();
+                            if (!line) continue;
+
+                            const parts = [];
+                            let current = '';
+                            let inQuote = false;
+                            for (let j = 0; j < line.length; j++) {
+                                const char = line[j];
+                                if (char === '"') {
+                                    inQuote = !inQuote;
+                                    current += char;
+                                } else if (char === ',' && !inQuote) {
+                                    parts.push(current);
+                                    current = '';
+                                } else {
+                                    current += char;
+                                }
+                            }
+                            parts.push(current);
+
+                            if (parts.length < 2) continue;
+
+                            const num = parseInt(parts[0].trim());
+                            let dtStr = parts[1].trim(); 
+                            if (dtStr.startsWith('"') && dtStr.endsWith('"')) dtStr = dtStr.slice(1, -1);
+
+                            const dSec = parseFloat(parts[2]?.trim() || 0);
+                            
+                            let memo = parts[3] ? parts[3].trim() : "";
+                            if (memo.startsWith('"') && memo.endsWith('"')) memo = memo.slice(1, -1).replace(/""/g, '"');
+                            
+                            const dt = parseDateTimeString(dtStr);
+                            if (!dt) continue;
+
+                            boxSchedule.push({
+                                num, date: dt.toLocaleDateString('ja-JP', {month:'2-digit', day:'2-digit'}),
+                                time: dt.toLocaleTimeString('ja-JP', {hour12:false}),
+                                absoluteTime: dt.getTime(), delay: dSec, memo
+                            });
+                            mDelays[num] = dSec;
+                            mMemos[num] = memo;
+                        }
+
+                        if (boxSchedule.length > 0) {
+                            parsedTasks.push({
+                                id: Date.now() + parsedTasks.length, // 一時ID
+                                title: taskData.title,
+                                startDateTime: taskData.startDateTime,
+                                finishFull: taskData.finishFull,
+                                boxes: boxSchedule.length,
+                                boxSchedule: boxSchedule,
+                                manualDelays: mDelays,
+                                manualMemos: mMemos,
+                                theme: currentTheme,
+                                alarmEnabled: false, alarmLeadTime: 5,
+                                params: taskData.params
+                            });
+                        }
+                    });
+                } catch (e) {
+                    console.error("File Parse Error", e);
+                }
+            }
+
+            if (parsedTasks.length === 0) {
+                showToast("有効なデータがありませんでした");
+                input.value = "";
+                return;
+            }
+
+            if (currentGroupId) {
+                // クラウドへのアップロード
+                try {
+                    const collectionPath = `group_${currentGroupId}_history`;
+                    const colRef = collection(db, 'artifacts', appId, 'public', 'data', collectionPath);
+                    
+                    let savedCount = 0;
+                    for (const task of parsedTasks) {
+                        const dataToSave = { ...task };
+                        delete dataToSave.id; // Firestore IDを使用するため削除
+                        dataToSave.createdAt = serverTimestamp();
+                        // データのクリーンアップ（undefined対策）
+                        dataToSave.manualDelays = cleanObject(dataToSave.manualDelays);
+                        dataToSave.manualMemos = cleanObject(dataToSave.manualMemos);
+
+                        await addDoc(colRef, dataToSave);
+                        savedCount++;
+                    }
+                    window.showToast(`${savedCount}件をクラウド履歴に追加しました`);
+                } catch (e) {
+                    console.error("Cloud import error:", e);
+                    window.showToast("クラウドへの追加に失敗しました: " + e.message);
+                }
+            } else {
+                // ローカルへの保存
+                parsedTasks.forEach(task => {
+                    task.id = Date.now() + Math.floor(Math.random() * 1000); // 重複回避
+                    task.createdAt = serverTimestamp();
+                    localTasks.push(task);
+                });
+                
+                localTasks.sort((a, b) => b.id - a.id);
+                savePersistence();
+                renderTasks();
+                showToast(`${parsedTasks.length}件をローカルに追加しました`);
+            }
+            
+            input.value = "";
+        };
+
+        window.triggerClearAll = () => {
+            const list = currentGroupId ? cloudTasks : localTasks;
+            list.length > 0 ? toggleConfirmModal() : showToast("履歴はありません");
+        };
+
+        window.executeClearAll = async () => {
+            if (currentGroupId) {
+                const collectionPath = `group_${currentGroupId}_history`;
+                window.showToast("クラウドモードでの一括削除は無効化されています");
+            } else {
+                localTasks = []; 
+                notifiedBoxesMap.clear(); 
+                expandedTaskIds.clear(); 
+                savePersistence(); 
+                renderTasks(); 
+                window.showToast("履歴を削除しました");
+            }
+            toggleConfirmModal();
+        };
+
+        window.copyTask = (id) => { 
+            const list = currentGroupId ? cloudTasks : localTasks;
+            const t = list.find(x => x.id === id); 
+            if (!t) return; 
+            let txt = `【${t.title}】\n完了: ${t.finishFull}\n`; 
+            t.boxSchedule.forEach(b => {
+                const memo = (t.manualMemos && t.manualMemos[b.num]) || b.memo || "";
+                txt += `${b.num}箱目: ${b.date} ${b.time}${memo ? ' ('+memo+')' : ''}\n`
+            }); 
+            const d = document.createElement("textarea"); document.body.appendChild(d); d.value = txt; d.select(); document.execCommand("copy"); document.body.removeChild(d); showToast("コピーしました"); 
+        };
+
+        window.deleteTask = async (id) => {
+            if (currentGroupId) {
+                const task = cloudTasks.find(t => t.id === id);
+                if (task && task.docId) {
+                    try {
+                        const collectionPath = `group_${currentGroupId}_history`;
+                        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', collectionPath, task.docId));
+                        window.showToast("クラウドから削除しました");
+                    } catch (e) {
+                        console.error(e);
+                        window.showToast("削除エラー");
+                    }
+                }
+            } else {
+                localTasks = localTasks.filter(t => t.id !== id);
+                expandedTaskIds.delete(id);
+                savePersistence();
+                renderTasks();
+                window.showToast("削除しました");
+            }
+        };
+
+        window.toggleHistoryDetail = (id) => { 
+            if (expandedTaskIds.has(id)) expandedTaskIds.delete(id); else expandedTaskIds.add(id); 
+            renderTasks(); 
+        };
+
+        window.renderTasks = () => {
+            const list = currentGroupId ? cloudTasks : localTasks;
+            
+            if (list.length === 0) { 
+                taskListContainer.innerHTML = `<div class="text-center py-10 opacity-30 italic">${currentGroupId ? 'クラウド' : 'ローカル'}履歴はありません</div>`; 
+                return; 
+            }
+            
+            taskListContainer.innerHTML = list.map(task => {
+                const isExpanded = expandedTaskIds.has(task.id);
+                return `
+                <div class="rounded-2xl shadow-sm border overflow-hidden transition-all mb-4" style="background-color: var(--bg-card); border-color: var(--card-border);">
+                    <div class="p-4" onclick="toggleHistoryDetail(${task.id})">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1 pr-4" onclick="event.stopPropagation()">
+                                <input type="text" value="${task.title}" 
+                                       onchange="updateTaskTitle(${task.id}, this.value)"
+                                       class="font-bold text-sm bg-transparent border-b border-transparent focus:border-indigo-500 outline-none w-full transition-colors placeholder-slate-300"
+                                       style="color: var(--text-main);"
+                                       placeholder="案件名を入力">
+                            </div>
+                            <div class="flex items-center gap-2 shrink-0">
+                                ${task.alarmEnabled ? '<span class="text-[8px] bg-red-100 text-red-500 px-1 rounded font-bold">ALARM ON</span>' : ''}
+                                <span class="text-[9px] font-black px-2 py-0.5 rounded-full uppercase" style="background-color: var(--bg-body); color: var(--primary); border: 1px solid var(--accent);">${task.boxes} BOX</span>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <span class="text-[9px] opacity-40 font-bold uppercase block">Finish</span>
+                            <span class="text-lg font-black tracking-tight" style="color: var(--primary);">${task.finishFull}</span>
+                        </div>
+                    </div>
+                    <div id="det-${task.id}" class="${isExpanded ? '' : 'hidden'} border-t p-3 space-y-4" style="border-color: var(--card-border); background-color: var(--bg-body);">
+                        <div class="bg-white p-3 rounded-xl border border-slate-100 flex items-center justify-between shadow-sm">
+                            <div class="flex flex-col">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase">通知設定</span>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <input type="number" value="${task.alarmLeadTime}" onchange="updateTaskAlarmLeadTime(${task.id}, this.value)" class="w-10 text-center text-xs font-bold border-b border-slate-200 bg-transparent outline-none">
+                                    <span class="text-[10px] text-slate-500">分前</span>
+                                </div>
+                            </div>
+                            <label class="switch"><input type="checkbox" ${task.alarmEnabled ? 'checked' : ''} onchange="toggleTaskAlarm(${task.id})"><span class="slider"></span></label>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="downloadCSV(${task.id})" class="flex-1 py-2 rounded-xl text-[10px] font-bold border" style="background-color: var(--bg-card); color: var(--text-sub); border-color: var(--card-border);">CSV</button>
+                            <button onclick="copyTask(${task.id})" class="flex-1 py-2 rounded-xl text-[10px] font-bold border" style="background-color: var(--bg-card); color: var(--text-sub); border-color: var(--card-border);">コピー</button>
+                            <button onclick="deleteTask(${task.id})" class="w-10 h-10 rounded-xl flex items-center justify-center bg-red-50 text-red-400 border border-red-100"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
+                        </div>
+                        <div id="boxlist-${task.id}" class="space-y-1 max-h-56 overflow-y-auto custom-scrollbar pr-1">
+                            ${task.boxSchedule.map(box => {
+                                const boxIso = dateToIsoLocal(new Date(box.absoluteTime));
+                                const currentMemo = (task.manualMemos && task.manualMemos[box.num] !== undefined) ? task.manualMemos[box.num] : (box.memo || "");
+                                return `<div class="flex flex-col p-2 border-b border-slate-200 last:border-0 opacity-80">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-1.5 overflow-hidden">
+                                            <span class="min-w-[20px] h-5 flex items-center justify-center rounded bg-slate-100 text-slate-500 text-[9px] font-bold">${box.num}</span>
+                                            <button onclick="event.stopPropagation(); setBoxToNow(${task.id}, ${box.num})" class="px-1.5 py-0.5 bg-indigo-600 text-white rounded text-[8px] font-bold active:scale-95 transition-all whitespace-nowrap">今</button>
+                                            ${(task.manualDelays && task.manualDelays[box.num]) ? '<span class="text-[8px] text-orange-400 font-bold italic leading-none shrink-0">ADJ</span>' : ''}
+                                        </div>
+                                        <div class="flex items-center gap-0.5">
+                                            <input type="datetime-local" class="dt-input" value="${boxIso}" onchange="updateBoxTimeManual(${task.id}, ${box.num}, this.value)">
+                                            <div class="flex gap-0.5" onclick="event.stopPropagation()">
+                                                <button onclick="adjustBoxDelay(${task.id}, ${box.num}, 60)" class="w-5 h-5 rounded bg-white border border-slate-200 flex items-center justify-center text-[10px] font-bold active:bg-indigo-100">+</button>
+                                                <button onclick="adjustBoxDelay(${task.id}, ${box.num}, -60)" class="w-5 h-5 rounded bg-white border border-slate-200 flex items-center justify-center text-[10px] font-bold active:bg-indigo-100">-</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <textarea class="memo-input" rows="1" placeholder="メモ..." oninput="window.autoResize(this)" onchange="updateBoxMemoManual(${task.id}, ${box.num}, this.value)" onclick="event.stopPropagation()">${currentMemo}</textarea>
+                                </div>`
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>`
+            }).join('');
+            
+            // Adjust newly rendered textareas
+            setTimeout(adjustAllTextareas, 0);
+        };
+
+        window.onload = () => {
+            setDefaultStartTime();
+            loadPersistence();
+            setInterval(updateClock, 1000);
+            updateClock();
+            
+            ['quantity', 'cavities', 'qtyPerBox', 'cycleTime', 'efficiency', 'startTimeInput'].forEach(id => {
+                document.getElementById(id)?.addEventListener('input', () => { 
+                    manualDelays = {}; 
+                    manualMemos = {}; 
+                    calculate(); 
+                    notifiedBoxesMap.clear();
+                });
+            });
+        };
+    </script>
+</body>
+</html>
