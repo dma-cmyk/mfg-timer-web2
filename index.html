@@ -540,17 +540,22 @@
                     <h2 class="text-sm font-bold opacity-60 uppercase tracking-widest">History</h2>
                     <span id="historySourceLabel" class="text-[9px] text-slate-400">※ローカル保存（個人）</span>
                 </div>
-                <div class="flex gap-2">
-                    <button onclick="document.getElementById('csvUploadInput').click()" class="text-[10px] font-bold text-indigo-500 uppercase tracking-wider flex items-center gap-1">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
-                        Upload
-                    </button>
-                    <button onclick="downloadAllTasksCSV()" class="text-[10px] font-bold text-teal-500 uppercase tracking-wider flex items-center gap-1">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-                        All CSV
-                    </button>
-                    <button onclick="triggerClearAll()" class="text-[10px] font-bold text-red-500 uppercase tracking-wider ml-1">Clear All</button>
+                <!-- View Mode Switcher -->
+                <div class="flex bg-slate-200/50 p-1 rounded-lg">
+                    <button id="btn-view-task" onclick="toggleHistoryViewMode('task')" class="px-3 py-1 rounded-md text-[10px] font-bold transition-all bg-white text-indigo-600 shadow-sm">案件別</button>
+                    <button id="btn-view-timeline" onclick="toggleHistoryViewMode('timeline')" class="px-3 py-1 rounded-md text-[10px] font-bold transition-all text-slate-400">全工程</button>
                 </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="document.getElementById('csvUploadInput').click()" class="text-[10px] font-bold text-indigo-500 uppercase tracking-wider flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                    Upload
+                </button>
+                <button onclick="downloadAllTasksCSV()" class="text-[10px] font-bold text-teal-500 uppercase tracking-wider flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                    All CSV
+                </button>
+                <button onclick="triggerClearAll()" class="text-[10px] font-bold text-red-500 uppercase tracking-wider ml-1">Clear All</button>
             </div>
             <input type="file" id="csvUploadInput" class="hidden" accept=".csv" multiple onchange="handleCSVUpload(this)">
             <div id="taskList" class="space-y-4"></div>
@@ -616,6 +621,7 @@
         let cloudTasks = []; 
         let localTasks = [];
         let calcTimer; // Timer for debounce
+        let historyViewMode = 'task'; // 'task' or 'timeline'
 
         // Notification Log
         let notificationLog = [];
@@ -714,6 +720,31 @@
                 menu.classList.add('hidden');
             }
         });
+
+        // --- View Mode Logic ---
+        window.toggleHistoryViewMode = (mode) => {
+            historyViewMode = mode;
+            updateHistoryViewModeUI();
+            renderTasks();
+        };
+
+        function updateHistoryViewModeUI() {
+            const btnTask = document.getElementById('btn-view-task');
+            const btnTimeline = document.getElementById('btn-view-timeline');
+            if (!btnTask || !btnTimeline) return;
+
+            if(historyViewMode === 'task') {
+                btnTask.classList.add('bg-white', 'text-indigo-600', 'shadow-sm');
+                btnTask.classList.remove('text-slate-400');
+                btnTimeline.classList.remove('bg-white', 'text-indigo-600', 'shadow-sm');
+                btnTimeline.classList.add('text-slate-400');
+            } else {
+                btnTask.classList.remove('bg-white', 'text-indigo-600', 'shadow-sm');
+                btnTask.classList.add('text-slate-400');
+                btnTimeline.classList.add('bg-white', 'text-indigo-600', 'shadow-sm');
+                btnTimeline.classList.remove('text-slate-400');
+            }
+        }
 
         // --- Notification Log Logic ---
         window.toggleNotificationLogModal = () => {
@@ -956,30 +987,50 @@
             const now = Date.now();
             // 現在表示中のリスト（履歴）のタスクのみ対象にする
             const list = currentGroupId ? cloudTasks : localTasks;
+            
+            // 全体モードの場合はリスト全体から1つだけハイライトするならロジックが変わるが、
+            // 現状は各行に対してクラスを当てる方式なので共通でいける。
+            // ただしTimelineモードでは行IDがユニークであることを利用する。
 
-            list.forEach(task => {
-                // まず全行のハイライトを消す（このタスクのDOM要素のみ対象にする）
-                const boxListContainer = document.getElementById(`boxlist-${task.id}`);
-                if (!boxListContainer) return;
+            if (historyViewMode === 'timeline') {
+                // タイムラインモードの場合、全行をスキャンして適切な行にクラスを当てる
+                 const allRows = document.querySelectorAll('.box-row');
+                 allRows.forEach(row => row.classList.remove('next-alarm-row'));
 
-                const rows = boxListContainer.querySelectorAll('.box-row');
-                rows.forEach(row => {
-                    row.classList.remove('next-alarm-row');
-                });
-
-                // アラームONかつ未完了のものを探す
-                if (task.alarmEnabled) {
-                    // boxSchedule は数値(absoluteTime)のみ持っている
-                    // absoluteTime > now となる最初の箱を探す
-                    const nextBox = task.boxSchedule.find(b => b.absoluteTime > now);
-                    if (nextBox) {
-                        const row = document.getElementById(`row-${task.id}-${nextBox.num}`);
-                        if (row) {
-                            row.classList.add('next-alarm-row');
+                 // タスクごとに次のアラームを探す
+                 list.forEach(task => {
+                    if (task.alarmEnabled && task.boxSchedule) {
+                        const nextBox = task.boxSchedule.find(b => b.absoluteTime > now);
+                        if(nextBox) {
+                            const rowId = `row-${task.id}-${nextBox.num}`;
+                            const row = document.getElementById(rowId);
+                            if(row) row.classList.add('next-alarm-row');
                         }
                     }
-                }
-            });
+                 });
+
+            } else {
+                // 案件別モードの場合
+                list.forEach(task => {
+                    const boxListContainer = document.getElementById(`boxlist-${task.id}`);
+                    if (!boxListContainer) return;
+
+                    const rows = boxListContainer.querySelectorAll('.box-row');
+                    rows.forEach(row => {
+                        row.classList.remove('next-alarm-row');
+                    });
+
+                    if (task.alarmEnabled && task.boxSchedule) {
+                        const nextBox = task.boxSchedule.find(b => b.absoluteTime > now);
+                        if (nextBox) {
+                            const row = document.getElementById(`row-${task.id}-${nextBox.num}`);
+                            if (row) {
+                                row.classList.add('next-alarm-row');
+                            }
+                        }
+                    }
+                });
+            }
         }
 
         function calculate() {
@@ -1171,8 +1222,10 @@
 
             // Scroll restoration setup
             const scrollTargetId = taskId ? `boxlist-${taskId}` : 'boxTimeline';
-            const internalList = document.getElementById(scrollTargetId);
-            const internalScrollPos = internalList ? internalList.scrollTop : 0;
+            // In timeline view, we don't have boxlist containers, scroll target is main list
+            const scrollTargetElement = (historyViewMode === 'timeline' && taskId) ? document.getElementById('taskList').parentElement : document.getElementById(scrollTargetId);
+            
+            const internalScrollPos = scrollTargetElement ? scrollTargetElement.scrollTop : 0;
             const windowScrollPos = window.scrollY;
 
             // Safe DOM access for settings
@@ -1236,8 +1289,7 @@
             // Execute scroll restoration
             requestAnimationFrame(() => {
                 window.scrollTo(0, windowScrollPos);
-                const newList = document.getElementById(scrollTargetId);
-                if (newList) newList.scrollTop = internalScrollPos;
+                if(scrollTargetElement) scrollTargetElement.scrollTop = internalScrollPos;
             });
         };
 
@@ -1251,8 +1303,9 @@
         window.adjustBoxDelay = (taskId, boxNum, deltaSeconds) => {
             // Scroll restoration setup
             const scrollTargetId = taskId ? `boxlist-${taskId}` : 'boxTimeline';
-            const internalList = document.getElementById(scrollTargetId);
-            const internalScrollPos = internalList ? internalList.scrollTop : 0;
+            const scrollTargetElement = (historyViewMode === 'timeline' && taskId) ? document.getElementById('taskList').parentElement : document.getElementById(scrollTargetId);
+            
+            const internalScrollPos = scrollTargetElement ? scrollTargetElement.scrollTop : 0;
             const windowScrollPos = window.scrollY;
 
             if (!taskId) {
@@ -1280,8 +1333,7 @@
             // Execute scroll restoration
             requestAnimationFrame(() => {
                 window.scrollTo(0, windowScrollPos);
-                const newList = document.getElementById(scrollTargetId);
-                if (newList) newList.scrollTop = internalScrollPos;
+                if(scrollTargetElement) scrollTargetElement.scrollTop = internalScrollPos;
             });
         };
 
@@ -1702,79 +1754,126 @@
                 taskListContainer.innerHTML = `<div class="text-center py-10 opacity-30 italic">${currentGroupId ? 'クラウド' : 'ローカル'}履歴はありません</div>`; 
                 return; 
             }
-            
-            taskListContainer.innerHTML = list.map(task => {
-                const isExpanded = expandedTaskIds.has(task.id);
-                return `
-                <div class="rounded-2xl shadow-sm border overflow-hidden transition-all mb-4" style="background-color: var(--bg-card); border-color: var(--card-border);">
-                    <div class="p-4" onclick="toggleHistoryDetail(${task.id})">
-                        <div class="flex justify-between items-start">
-                            <div class="flex-1 pr-4" onclick="event.stopPropagation()">
-                                <input type="text" value="${task.title}" 
-                                       onchange="updateTaskTitle(${task.id}, this.value)"
-                                       class="font-bold text-sm bg-transparent border-b border-transparent focus:border-indigo-500 outline-none w-full transition-colors placeholder-slate-300"
-                                       style="color: var(--text-main);"
-                                       placeholder="案件名を入力">
-                            </div>
-                            <div class="flex items-center gap-2 shrink-0">
-                                ${task.alarmEnabled ? '<span class="text-[8px] bg-red-100 text-red-500 px-1 rounded font-bold">ALARM ON</span>' : ''}
-                                <span class="text-[9px] font-black px-2 py-0.5 rounded-full uppercase" style="background-color: var(--bg-body); color: var(--primary); border: 1px solid var(--accent);">${task.boxes} BOX</span>
+
+            if (historyViewMode === 'timeline') {
+                // 全体タイムラインモード
+                let allBoxes = [];
+                list.forEach(task => {
+                    if(!task.boxSchedule) return;
+                    task.boxSchedule.forEach(box => {
+                        allBoxes.push({
+                            ...box,
+                            taskTitle: task.title,
+                            taskId: task.id,
+                            alarmEnabled: task.alarmEnabled,
+                            // マージ
+                            memo: (task.manualMemos && task.manualMemos[box.num]) || box.memo,
+                            delay: (task.manualDelays && task.manualDelays[box.num]) || box.delay
+                        });
+                    });
+                });
+                
+                // 時系列ソート
+                allBoxes.sort((a, b) => a.absoluteTime - b.absoluteTime);
+
+                taskListContainer.innerHTML = allBoxes.map(box => {
+                    const dt = new Date(box.absoluteTime);
+                    const dateStr = dt.toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit' });
+                    const timeStr = dt.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', hour12: false });
+                    const isPast = box.absoluteTime < Date.now();
+                    
+                    return `
+                    <div class="box-row flex items-center p-3 mb-2 rounded-xl border ${isPast ? 'bg-slate-50 border-slate-100 opacity-60' : 'bg-white border-slate-200'} shadow-sm" id="row-${box.taskId}-${box.num}">
+                        <div class="w-12 text-center mr-3">
+                            <div class="text-[10px] font-bold opacity-50">${dateStr}</div>
+                            <div class="text-sm font-black tracking-tighter">${timeStr}</div>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-xs font-bold truncate" style="color: var(--text-main);">${box.taskTitle}</div>
+                            <div class="flex items-center gap-2 mt-0.5">
+                                <span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 rounded font-bold">${box.num}箱目</span>
+                                ${box.memo ? `<span class="text-[10px] text-slate-400 truncate max-w-[100px]">📝 ${box.memo}</span>` : ''}
                             </div>
                         </div>
-                        <div class="mt-3">
-                            <span class="text-[9px] opacity-40 font-bold uppercase block">Finish</span>
-                            <span class="text-lg font-black tracking-tight" style="color: var(--primary);">${task.finishFull}</span>
-                        </div>
-                    </div>
-                    <div id="det-${task.id}" class="${isExpanded ? '' : 'hidden'} border-t p-3 space-y-4" style="border-color: var(--card-border); background-color: var(--bg-body);">
-                        <div class="bg-white p-3 rounded-xl border border-slate-100 flex items-center justify-between shadow-sm">
-                            <div class="flex flex-col">
-                                <span class="text-[10px] font-bold text-slate-400 uppercase">通知設定</span>
-                                <div class="flex items-center gap-2 mt-1">
-                                    <input type="number" value="${task.alarmLeadTime}" onchange="updateTaskAlarmLeadTime(${task.id}, this.value)" class="w-10 text-center text-xs font-bold border-b border-slate-200 bg-transparent outline-none">
-                                    <span class="text-[10px] text-slate-500">分前</span>
+                        ${(box.delay && box.delay !== 0) ? '<span class="text-[8px] text-orange-400 font-bold italic mr-2">ADJ</span>' : ''}
+                    </div>`;
+                }).join('');
+
+            } else {
+                // 案件別モード
+                taskListContainer.innerHTML = list.map(task => {
+                    const isExpanded = expandedTaskIds.has(task.id);
+                    return `
+                    <div class="rounded-2xl shadow-sm border overflow-hidden transition-all mb-4" style="background-color: var(--bg-card); border-color: var(--card-border);">
+                        <div class="p-4" onclick="toggleHistoryDetail(${task.id})">
+                            <div class="flex justify-between items-start">
+                                <div class="flex-1 pr-4" onclick="event.stopPropagation()">
+                                    <input type="text" value="${task.title}" 
+                                           onchange="updateTaskTitle(${task.id}, this.value)"
+                                           class="font-bold text-sm bg-transparent border-b border-transparent focus:border-indigo-500 outline-none w-full transition-colors placeholder-slate-300"
+                                           style="color: var(--text-main);"
+                                           placeholder="案件名を入力">
+                                </div>
+                                <div class="flex items-center gap-2 shrink-0">
+                                    ${task.alarmEnabled ? '<span class="text-[8px] bg-red-100 text-red-500 px-1 rounded font-bold">ALARM ON</span>' : ''}
+                                    <span class="text-[9px] font-black px-2 py-0.5 rounded-full uppercase" style="background-color: var(--bg-body); color: var(--primary); border: 1px solid var(--accent);">${task.boxes} BOX</span>
                                 </div>
                             </div>
-                            <label class="switch"><input type="checkbox" ${task.alarmEnabled ? 'checked' : ''} onchange="toggleTaskAlarm(${task.id})"><span class="slider"></span></label>
+                            <div class="mt-3">
+                                <span class="text-[9px] opacity-40 font-bold uppercase block">Finish</span>
+                                <span class="text-lg font-black tracking-tight" style="color: var(--primary);">${task.finishFull}</span>
+                            </div>
                         </div>
-                        <div class="flex gap-2">
-                            <button onclick="downloadCSV(${task.id})" class="flex-1 py-2 rounded-xl text-[10px] font-bold border" style="background-color: var(--bg-card); color: var(--text-sub); border-color: var(--card-border);">CSV</button>
-                            <button onclick="copyTask(${task.id})" class="flex-1 py-2 rounded-xl text-[10px] font-bold border" style="background-color: var(--bg-card); color: var(--text-sub); border-color: var(--card-border);">コピー</button>
-                            <button onclick="deleteTask(${task.id})" class="w-10 h-10 rounded-xl flex items-center justify-center bg-red-50 text-red-400 border border-red-100"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
-                        </div>
-                        <div id="boxlist-${task.id}" class="space-y-1 max-h-56 overflow-y-auto custom-scrollbar pr-1">
-                            ${task.boxSchedule.map(box => {
-                                const boxFinishDate = new Date(box.absoluteTime);
-                                const boxDate = boxFinishDate.toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit' });
-                                const boxTime = boxFinishDate.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', hour12: false });
-                                const boxIso = dateToIsoLocal(boxFinishDate);
+                        <div id="det-${task.id}" class="${isExpanded ? '' : 'hidden'} border-t p-3 space-y-4" style="border-color: var(--card-border); background-color: var(--bg-body);">
+                            <div class="bg-white p-3 rounded-xl border border-slate-100 flex items-center justify-between shadow-sm">
+                                <div class="flex flex-col">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase">通知設定</span>
+                                    <div class="flex items-center gap-2 mt-1">
+                                        <input type="number" value="${task.alarmLeadTime}" onchange="updateTaskAlarmLeadTime(${task.id}, this.value)" class="w-10 text-center text-xs font-bold border-b border-slate-200 bg-transparent outline-none">
+                                        <span class="text-[10px] text-slate-500">分前</span>
+                                    </div>
+                                </div>
+                                <label class="switch"><input type="checkbox" ${task.alarmEnabled ? 'checked' : ''} onchange="toggleTaskAlarm(${task.id})"><span class="slider"></span></label>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="downloadCSV(${task.id})" class="flex-1 py-2 rounded-xl text-[10px] font-bold border" style="background-color: var(--bg-card); color: var(--text-sub); border-color: var(--card-border);">CSV</button>
+                                <button onclick="copyTask(${task.id})" class="flex-1 py-2 rounded-xl text-[10px] font-bold border" style="background-color: var(--bg-card); color: var(--text-sub); border-color: var(--card-border);">コピー</button>
+                                <button onclick="deleteTask(${task.id})" class="w-10 h-10 rounded-xl flex items-center justify-center bg-red-50 text-red-400 border border-red-100"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
+                            </div>
+                            <div id="boxlist-${task.id}" class="space-y-1 max-h-56 overflow-y-auto custom-scrollbar pr-1">
+                                ${task.boxSchedule.map(box => {
+                                    const boxFinishDate = new Date(box.absoluteTime);
+                                    const boxDate = boxFinishDate.toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit' });
+                                    const boxTime = boxFinishDate.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', hour12: false });
+                                    const boxIso = dateToIsoLocal(boxFinishDate);
 
-                                const currentMemo = (task.manualMemos && task.manualMemos[box.num] !== undefined) ? task.manualMemos[box.num] : (box.memo || "");
-                                return `<div class="box-row flex flex-col p-2 border-b border-slate-200 last:border-0 opacity-80" id="row-${task.id}-${box.num}">
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center gap-1.5 overflow-hidden">
-                                            <span class="min-w-[20px] h-5 flex items-center justify-center rounded bg-slate-100 text-slate-500 text-[9px] font-bold">${box.num}</span>
-                                            <button onclick="event.stopPropagation(); setBoxToNow(${task.id}, ${box.num})" class="px-1.5 py-0.5 bg-indigo-600 text-white rounded text-[8px] font-bold active:scale-95 transition-all whitespace-nowrap">今</button>
-                                            ${(task.manualDelays && task.manualDelays[box.num]) ? '<span class="text-[8px] text-orange-400 font-bold italic leading-none shrink-0">ADJ</span>' : ''}
-                                        </div>
-                                        <div class="flex items-center gap-0.5">
-                                            <input type="datetime-local" class="dt-input" value="${boxIso}" onchange="updateBoxTimeManual(${task.id}, ${box.num}, this.value)">
-                                            <div class="flex gap-0.5" onclick="event.stopPropagation()">
-                                                <button onclick="adjustBoxDelay(${task.id}, ${box.num}, 60)" class="w-5 h-5 rounded bg-white border border-slate-200 flex items-center justify-center text-[10px] font-bold active:bg-indigo-100">+</button>
-                                                <button onclick="adjustBoxDelay(${task.id}, ${box.num}, -60)" class="w-5 h-5 rounded bg-white border border-slate-200 flex items-center justify-center text-[10px] font-bold active:bg-indigo-100">-</button>
+                                    const currentMemo = (task.manualMemos && task.manualMemos[box.num] !== undefined) ? task.manualMemos[box.num] : (box.memo || "");
+                                    return `<div class="box-row flex flex-col p-2 border-b border-slate-200 last:border-0 opacity-80" id="row-${task.id}-${box.num}">
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex items-center gap-1.5 overflow-hidden">
+                                                <span class="min-w-[20px] h-5 flex items-center justify-center rounded bg-slate-100 text-slate-500 text-[9px] font-bold">${box.num}</span>
+                                                <button onclick="event.stopPropagation(); setBoxToNow(${task.id}, ${box.num})" class="px-1.5 py-0.5 bg-indigo-600 text-white rounded text-[8px] font-bold active:scale-95 transition-all whitespace-nowrap">今</button>
+                                                ${(task.manualDelays && task.manualDelays[box.num]) ? '<span class="text-[8px] text-orange-400 font-bold italic leading-none shrink-0">ADJ</span>' : ''}
+                                            </div>
+                                            <div class="flex items-center gap-0.5">
+                                                <input type="datetime-local" class="dt-input" value="${boxIso}" onchange="updateBoxTimeManual(${task.id}, ${box.num}, this.value)">
+                                                <div class="flex gap-0.5" onclick="event.stopPropagation()">
+                                                    <button onclick="adjustBoxDelay(${task.id}, ${box.num}, 60)" class="w-5 h-5 rounded bg-white border border-slate-200 flex items-center justify-center text-[10px] font-bold active:bg-indigo-100">+</button>
+                                                    <button onclick="adjustBoxDelay(${task.id}, ${box.num}, -60)" class="w-5 h-5 rounded bg-white border border-slate-200 flex items-center justify-center text-[10px] font-bold active:bg-indigo-100">-</button>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                    <textarea class="memo-input" rows="1" placeholder="メモ..." oninput="window.autoResize(this)" onchange="updateBoxMemoManual(${task.id}, ${box.num}, this.value)" onclick="event.stopPropagation()">${currentMemo}</textarea>
-                                </div>`
-                            }).join('')}
+                                        <textarea class="memo-input" rows="1" placeholder="メモ..." oninput="window.autoResize(this)" onchange="updateBoxMemoManual(${task.id}, ${box.num}, this.value)" onclick="event.stopPropagation()">${currentMemo}</textarea>
+                                    </div>`
+                                }).join('')}
+                            </div>
                         </div>
-                    </div>
-                </div>`
-            }).join('');
-            
-            // Adjust newly rendered textareas
-            setTimeout(adjustAllTextareas, 0);
+                    </div>`
+                }).join('');
+                
+                // Adjust newly rendered textareas
+                setTimeout(adjustAllTextareas, 0);
+            }
             updateNextHighlight();
         };
 
