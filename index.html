@@ -88,6 +88,31 @@
             background-size: cover;
         }
 
+        /* 次のアラーム強調表示 */
+        .next-alarm-row {
+            position: relative;
+            transition: background-color 0.3s, border-left-color 0.3s;
+        }
+        .next-alarm-row::after {
+            content: "NEXT ▶";
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 9px;
+            font-weight: 900;
+            opacity: 0.5;
+            pointer-events: none;
+            letter-spacing: 1px;
+        }
+
+        [data-theme="default"] .next-alarm-row { background-color: #fef9c3; border-left: 4px solid #facc15; }
+        [data-theme="cyberpunk"] .next-alarm-row { background-color: rgba(0, 255, 204, 0.1); border-left: 4px solid #00ffcc; }
+        [data-theme="marunouchi"] .next-alarm-row { background-color: #fff7ed; border-left: 4px solid #c9a063; }
+        [data-theme="tropical"] .next-alarm-row { background-color: #ecfeff; border-left: 4px solid #06b6d4; }
+        [data-theme="galaxy"] .next-alarm-row { background-color: rgba(192, 132, 252, 0.2); border-left: 4px solid #c084fc; }
+
+
         body {
             font-family: var(--font-main);
             background-color: var(--bg-body);
@@ -224,6 +249,10 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-indigo-500"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                             クラウド共有
                         </button>
+                        <button onclick="toggleNotificationLogModal(); toggleHeaderMenu()" class="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-3 text-sm font-bold" style="color: var(--text-main);">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-yellow-500"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+                            通知ログ
+                        </button>
                         <button onclick="toggleThemeModal(); toggleHeaderMenu()" class="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-3 text-sm font-bold" style="color: var(--text-main);">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-teal-500"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
                             テーマ切替
@@ -297,6 +326,28 @@
 
             <div class="pt-2">
                 <button onclick="toggleHelpModal()" class="w-full py-3 rounded-xl font-bold text-white shadow-lg active:scale-95 transition-all text-sm" style="background-color: var(--primary);">閉じる</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Notification Log Modal -->
+    <div id="notificationLogModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm">
+        <div class="w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 max-h-[85vh] flex flex-col" style="background-color: var(--bg-card);">
+            <div class="flex justify-between items-center border-b pb-3" style="border-color: var(--card-border);">
+                <h3 class="font-black text-lg flex items-center gap-2" style="color: var(--text-main);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-yellow-500"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+                    通知ログ
+                </h3>
+                <button onclick="toggleNotificationLogModal()" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div id="notificationList" class="flex-1 overflow-y-auto custom-scrollbar space-y-2 min-h-[200px]">
+                <!-- Logs go here -->
+            </div>
+            <div class="pt-2 flex gap-2">
+                <button onclick="clearNotificationLog()" class="flex-1 py-3 rounded-xl font-bold text-red-500 bg-red-50 border border-red-100 shadow-sm active:scale-95 transition-all text-sm">クリア</button>
+                <button onclick="toggleNotificationLogModal()" class="flex-1 py-3 rounded-xl font-bold text-white shadow-lg active:scale-95 transition-all text-sm" style="background-color: var(--primary);">閉じる</button>
             </div>
         </div>
     </div>
@@ -466,7 +517,7 @@
                 </div>
                 <div>
                     <label class="text-[10px] font-bold opacity-50 uppercase block mb-1">稼働率(%)</label>
-                    <input type="number" id="efficiency" value="95" class="w-full text-sm font-bold bg-transparent focus:outline-none" style="color: var(--text-main);">
+                    <input type="number" id="efficiency" value="100" class="w-full text-sm font-bold bg-transparent focus:outline-none" style="color: var(--text-main);">
                 </div>
             </div>
         </section>
@@ -537,12 +588,12 @@
 
         // --- GitHub Pages用に設定を変更してください ---
         const firebaseConfig = {
-          apiKey: "AIzaSyD8ffNzoaeQWHL-d7N3Fmqzz0D3vwa0ZDI",
-          authDomain: "pro-timer-app.firebaseapp.com",
-          projectId: "pro-timer-app",
-          storageBucket: "pro-timer-app.firebasestorage.app",
-          messagingSenderId: "381245688508",
-          appId: "1:381245688508:web:4e659e5f2a09bbb7139eb9"
+            apiKey: "AIzaSyD8ffNzoaeQWHL-d7N3Fmqzz0D3vwa0ZDI",
+            authDomain: "pro-timer-app.firebaseapp.com",
+            projectId: "pro-timer-app",
+            storageBucket: "pro-timer-app.firebasestorage.app",
+            messagingSenderId: "381245688508",
+            appId: "1:381245688508:web:4e659e5f2a09bbb7139eb9"
         };
         // -------------------------------------------
 
@@ -565,6 +616,9 @@
         let cloudTasks = []; 
         let localTasks = [];
         let calcTimer; // Timer for debounce
+
+        // Notification Log
+        let notificationLog = [];
 
         // Core variables for calculator
         let currentBoxSchedule = [];
@@ -660,6 +714,37 @@
                 menu.classList.add('hidden');
             }
         });
+
+        // --- Notification Log Logic ---
+        window.toggleNotificationLogModal = () => {
+            const modal = document.getElementById('notificationLogModal');
+            modal.classList.toggle('hidden');
+            if (!modal.classList.contains('hidden')) {
+                renderNotificationLog();
+            }
+        };
+
+        window.renderNotificationLog = () => {
+            const container = document.getElementById('notificationList');
+            if (notificationLog.length === 0) {
+                container.innerHTML = '<div class="text-center py-10 opacity-30 italic text-xs">通知履歴はありません</div>';
+                return;
+            }
+            container.innerHTML = notificationLog.map(log => `
+                <div class="p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs">
+                    <div class="flex justify-between items-center mb-1 opacity-50">
+                        <span class="font-mono font-bold">${log.time}</span>
+                    </div>
+                    <div class="font-bold text-slate-700">${log.message}</div>
+                </div>
+            `).join('');
+        };
+
+        window.clearNotificationLog = () => {
+            notificationLog = [];
+            renderNotificationLog();
+        };
+
 
         // --- Room/Group Functions ---
         window.toggleShareModal = () => document.getElementById('shareModal').classList.toggle('hidden');
@@ -864,6 +949,37 @@
             const timeStr = now.toLocaleTimeString('ja-JP', { hour12: false });
             currentTimeDisplay.innerHTML = `<span class="opacity-60 mr-1.5">${dateStr}</span><span>${timeStr}</span>`;
             checkAlarms(now);
+            updateNextHighlight();
+        }
+
+        function updateNextHighlight() {
+            const now = Date.now();
+            // 現在表示中のリスト（履歴）のタスクのみ対象にする
+            const list = currentGroupId ? cloudTasks : localTasks;
+
+            list.forEach(task => {
+                // まず全行のハイライトを消す（このタスクのDOM要素のみ対象にする）
+                const boxListContainer = document.getElementById(`boxlist-${task.id}`);
+                if (!boxListContainer) return;
+
+                const rows = boxListContainer.querySelectorAll('.box-row');
+                rows.forEach(row => {
+                    row.classList.remove('next-alarm-row');
+                });
+
+                // アラームONかつ未完了のものを探す
+                if (task.alarmEnabled) {
+                    // boxSchedule は数値(absoluteTime)のみ持っている
+                    // absoluteTime > now となる最初の箱を探す
+                    const nextBox = task.boxSchedule.find(b => b.absoluteTime > now);
+                    if (nextBox) {
+                        const row = document.getElementById(`row-${task.id}-${nextBox.num}`);
+                        if (row) {
+                            row.classList.add('next-alarm-row');
+                        }
+                    }
+                }
+            });
         }
 
         function calculate() {
@@ -1097,9 +1213,6 @@
                                 "boxSchedule": result.schedule,
                                 "finishFull": `${new Date(result.schedule[result.schedule.length-1].absoluteTime).toLocaleString('ja-JP')} ` // 簡易生成
                             };
-                            
-                            // History では finishFull を表示用文字列として持っているが、ここも軽量化したいところ
-                            // 今回は簡易的に生成
 
                             updateTaskProperty(taskId, updates);
 
@@ -1112,7 +1225,8 @@
 
                             updateTaskProperty(taskId, {
                                 [`manualDelays.${boxNum}`]: newDelay,
-                                "boxSchedule": result.schedule
+                                "boxSchedule": result.schedule,
+                                "finishFull": `${result.schedule[result.schedule.length-1].date} ${result.schedule[result.schedule.length-1].time}`
                             });
                         }
                     }
@@ -1157,7 +1271,8 @@
 
                     updateTaskProperty(taskId, {
                         [`manualDelays.${boxNum}`]: newDelay,
-                        "boxSchedule": result.schedule
+                        "boxSchedule": result.schedule,
+                        "finishFull": `${result.schedule[result.schedule.length-1].date} ${result.schedule[result.schedule.length-1].time}`
                     });
                 }
             }
@@ -1207,12 +1322,28 @@
         function triggerAlarm(taskName, boxNum, leadTime) {
             const message = `${taskName}の${boxNum}箱目の完成まで、残り${leadTime}分です。`;
             showToast("ALARM: " + message);
+
+            // バイブレーション機能の追加
+            if (navigator.vibrate) {
+                navigator.vibrate([200, 100, 200]);
+            }
+
             if ('speechSynthesis' in window) {
                 speechSynthesis.cancel();
                 const utterance = new SpeechSynthesisUtterance(message);
                 utterance.lang = 'ja-JP';
                 utterance.rate = 1.0;
                 speechSynthesis.speak(utterance);
+            }
+            
+            // ログに追加
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('ja-JP');
+            notificationLog.unshift({ time: timeStr, message });
+            // モーダルが開いていれば更新
+            const modal = document.getElementById('notificationLogModal');
+            if (!modal.classList.contains('hidden')) {
+                renderNotificationLog();
             }
         }
 
@@ -1526,7 +1657,7 @@
             if (!t) return; 
             let txt = `【${t.title}】\n完了: ${t.finishFull}\n`; 
             t.boxSchedule.forEach(b => {
-                // 軽量化によりb.date, b.timeは存在しないため、absoluteTimeから生成する
+                // Generate date string from absoluteTime
                 const dt = new Date(b.absoluteTime);
                 const dateStr = dt.toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit' });
                 const timeStr = dt.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -1619,7 +1750,7 @@
                                 const boxIso = dateToIsoLocal(boxFinishDate);
 
                                 const currentMemo = (task.manualMemos && task.manualMemos[box.num] !== undefined) ? task.manualMemos[box.num] : (box.memo || "");
-                                return `<div class="flex flex-col p-2 border-b border-slate-200 last:border-0 opacity-80">
+                                return `<div class="box-row flex flex-col p-2 border-b border-slate-200 last:border-0 opacity-80" id="row-${task.id}-${box.num}">
                                     <div class="flex items-center justify-between">
                                         <div class="flex items-center gap-1.5 overflow-hidden">
                                             <span class="min-w-[20px] h-5 flex items-center justify-center rounded bg-slate-100 text-slate-500 text-[9px] font-bold">${box.num}</span>
@@ -1644,6 +1775,7 @@
             
             // Adjust newly rendered textareas
             setTimeout(adjustAllTextareas, 0);
+            updateNextHighlight();
         };
 
         window.onload = () => {
