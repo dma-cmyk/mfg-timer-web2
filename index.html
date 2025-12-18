@@ -1526,8 +1526,13 @@
             if (!t) return; 
             let txt = `【${t.title}】\n完了: ${t.finishFull}\n`; 
             t.boxSchedule.forEach(b => {
+                // 軽量化によりb.date, b.timeは存在しないため、absoluteTimeから生成する
+                const dt = new Date(b.absoluteTime);
+                const dateStr = dt.toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit' });
+                const timeStr = dt.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', hour12: false });
+                
                 const memo = (t.manualMemos && t.manualMemos[b.num]) || b.memo || "";
-                txt += `${b.num}箱目: ${b.date} ${b.time}${memo ? ' ('+memo+')' : ''}\n`
+                txt += `${b.num}箱目: ${dateStr} ${timeStr}${memo ? ' ('+memo+')' : ''}\n`
             }); 
             const d = document.createElement("textarea"); document.body.appendChild(d); d.value = txt; d.select(); document.execCommand("copy"); document.body.removeChild(d); showToast("コピーしました"); 
         };
