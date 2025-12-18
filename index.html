@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>PRO-TIMER: Precision Edition (Cloud History)</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- QR Code Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Share+Tech+Mono&family=Shippori+Mincho:wght@400;700&display=swap');
 
@@ -135,39 +137,67 @@
             width: 12px;
             height: 12px;
         }
+
+        /* Dropdown Menu Animation */
+        #headerMenu {
+            transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+        }
+        #headerMenu.hidden {
+            display: none;
+        }
+        #headerMenu:not(.hidden) {
+            transform: scale(1);
+            opacity: 1;
+        }
     </style>
 </head>
 <body data-theme="default" class="theme-transition min-h-screen pb-24">
 
     <!-- Header -->
     <header class="sticky top-0 z-30 px-4 py-3 flex justify-between items-center shadow-sm" style="background-color: var(--header-bg); border-bottom: 1px solid var(--card-border);">
-        <div class="flex flex-col">
-            <h1 class="text-lg font-black tracking-tight flex items-center gap-2" style="color: var(--primary);">
-                PRO-TIMER
-                <span id="groupStatusBadge" class="group-badge">
+        <div class="flex flex-col flex-1 min-w-0 mr-2">
+            <div class="flex items-center gap-2 mb-0.5">
+                <h1 class="text-lg font-black tracking-tight whitespace-nowrap" style="color: var(--primary);">PRO-TIMER</h1>
+                <span id="groupStatusBadge" class="group-badge flex-shrink-0">
                     <svg class="group-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                     <span id="groupStatusText">LOCAL</span>
                 </span>
-            </h1>
-            <p id="currentTime" class="text-[10px] font-mono font-bold uppercase tracking-widest flex items-center gap-1.5" style="color: var(--text-sub);">
-                <span class="opacity-60">----/--/-- (--)</span>
-                <span>00:00:00</span>
+            </div>
+            <p id="currentTime" class="text-[10px] font-mono font-bold uppercase tracking-widest opacity-60 truncate" style="color: var(--text-sub);">
+                00/00 00:00:00
             </p>
         </div>
-        <div class="flex gap-2">
-            <!-- Share Button -->
-            <button onclick="toggleShareModal()" class="p-2 rounded-full border transition-all active:scale-90" style="border-color: var(--card-border); color: var(--text-sub);">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            </button>
-            <button onclick="toggleHelpModal()" class="p-2 rounded-full border transition-all active:scale-90" style="border-color: var(--card-border); color: var(--text-sub);">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            </button>
-            <button onclick="toggleThemeModal()" class="p-2 rounded-full border transition-all active:scale-90" style="border-color: var(--card-border); color: var(--text-sub);">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-            </button>
-            <button onclick="saveTask()" id="saveButton" class="text-white px-5 py-2 rounded-full text-xs font-bold shadow-md active:scale-95 transition-all" style="background-color: var(--primary);">
+        
+        <div class="flex items-center gap-2 flex-shrink-0">
+            <!-- Save Button -->
+            <button onclick="saveTask()" id="saveButton" class="text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-md active:scale-95 transition-all" style="background-color: var(--primary);">
                 保存
             </button>
+            
+            <!-- Menu Button -->
+            <div class="relative">
+                <button onclick="toggleHeaderMenu()" class="p-2.5 rounded-xl border transition-all active:bg-gray-100" style="border-color: var(--card-border); color: var(--text-sub); background-color: var(--bg-card);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </button>
+                
+                <!-- Dropdown -->
+                <div id="headerMenu" class="hidden absolute right-0 top-full mt-2 w-48 rounded-2xl shadow-xl border overflow-hidden z-50 transform origin-top-right scale-95 opacity-0" style="background-color: var(--bg-card); border-color: var(--card-border);">
+                    <div class="p-1">
+                        <button onclick="toggleShareModal(); toggleHeaderMenu()" class="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-3 text-sm font-bold" style="color: var(--text-main);">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-indigo-500"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                            クラウド共有
+                        </button>
+                        <button onclick="toggleThemeModal(); toggleHeaderMenu()" class="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-3 text-sm font-bold" style="color: var(--text-main);">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-teal-500"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                            テーマ切替
+                        </button>
+                        <button onclick="toggleHelpModal(); toggleHeaderMenu()" class="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-3 text-sm font-bold" style="color: var(--text-main);">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-orange-500"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                            ヘルプ
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </header>
 
@@ -275,6 +305,11 @@
                     <p class="text-[10px] font-bold text-green-600 uppercase mb-1">Connected Group</p>
                     <p id="currentGroupIdDisplay" class="text-3xl font-black text-green-700 tracking-widest">---</p>
                     <p class="text-[10px] text-green-600/70 mt-2">計算結果の保存先がクラウドになります</p>
+                    <!-- QR Code Area -->
+                    <div class="flex justify-center mt-4 p-2 bg-white rounded-xl shadow-sm border border-slate-100 w-fit mx-auto">
+                        <div id="qrcode"></div>
+                    </div>
+                    <p class="text-[9px] text-green-600/70 mt-2">カメラで読み取ると参加できます</p>
                 </div>
                 <button onclick="leaveGroup()" class="w-full py-3 rounded-xl bg-red-50 text-red-500 font-bold text-sm hover:bg-red-100 active:scale-95 transition-all">
                     切断してローカル履歴に戻る
@@ -381,6 +416,7 @@
                         <input type="number" id="alarmLeadTimeDefault" value="5" onchange="saveAppConfig()" class="w-12 text-center text-sm font-black border-b border-slate-300 bg-transparent focus:outline-none" style="color: var(--text-main);">
                         <span class="text-[10px] font-bold opacity-50">分前</span>
                     </div>
+                    <button onclick="testAlarm()" class="ml-auto px-3 py-1 rounded-lg bg-indigo-50 text-indigo-600 text-[10px] font-bold border border-indigo-100 hover:bg-indigo-100 transition-colors">音声テスト</button>
                 </div>
             </div>
 
@@ -469,7 +505,6 @@
             messagingSenderId: "381245688508",
             appId: "1:381245688508:web:4e659e5f2a09bbb7139eb9"
         };
-
         // -------------------------------------------
 
         // アプリID（Firestoreのパスに使用。自由に変更可）
@@ -539,6 +574,15 @@
                 if (user) {
                     userId = user.uid;
                     document.getElementById('debugUser').textContent = `UID: ${userId.slice(0, 5)}...`;
+                    
+                    // URLパラメータからの自動参加チェック
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const groupParam = urlParams.get('group');
+                    if (groupParam && !currentGroupId) {
+                         // パラメータを除去してURLを綺麗にする（オプション）
+                         window.history.replaceState({}, document.title, window.location.pathname);
+                         joinGroupLogic(groupParam);
+                    }
                 } else {
                     userId = null;
                     document.getElementById('debugUser').textContent = `UID: ---`;
@@ -561,6 +605,21 @@
                 window.autoResize(el);
             });
         }
+
+        // --- Header Menu Logic ---
+        window.toggleHeaderMenu = () => {
+            const menu = document.getElementById('headerMenu');
+            menu.classList.toggle('hidden');
+        };
+
+        // Close menu when clicking outside
+        document.addEventListener('click', (e) => {
+            const menu = document.getElementById('headerMenu');
+            const btn = e.target.closest('button[onclick="toggleHeaderMenu()"]');
+            if (!menu.classList.contains('hidden') && !btn && !menu.contains(e.target)) {
+                menu.classList.add('hidden');
+            }
+        });
 
         // --- Room/Group Functions ---
         window.toggleShareModal = () => document.getElementById('shareModal').classList.toggle('hidden');
@@ -598,7 +657,11 @@
                 renderTasks();
             }, (error) => {
                 console.error("Listener error", error);
-                window.showToast("同期エラーが発生しました");
+                if (error.code === 'permission-denied') {
+                     window.showToast("権限エラー: Firestoreのルールを確認してください");
+                } else {
+                     window.showToast("同期エラーが発生しました");
+                }
             });
 
             updateShareUI(true, groupId);
@@ -624,6 +687,9 @@
             const idDisplay = document.getElementById('currentGroupIdDisplay');
             const historyLabel = document.getElementById('historySourceLabel');
             const saveButton = document.getElementById('saveButton');
+            const qrContainer = document.getElementById('qrcode');
+
+            qrContainer.innerHTML = ""; // Clear old QR
 
             if (connected) {
                 panelConn.classList.add('hidden');
@@ -635,6 +701,18 @@
                 historyLabel.classList.add('text-green-600', 'font-bold');
                 historyLabel.classList.remove('text-slate-400');
                 saveButton.textContent = "共有保存";
+
+                // Generate QR
+                const url = `${window.location.origin}${window.location.pathname}?group=${groupId}`;
+                new QRCode(qrContainer, {
+                    text: url,
+                    width: 128,
+                    height: 128,
+                    colorDark : "#4f46e5",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.H
+                });
+
             } else {
                 panelConn.classList.remove('hidden');
                 panelStatus.classList.add('hidden');
@@ -871,7 +949,11 @@
                         await updateDoc(docRef, updates);
                     } catch (e) {
                         console.error("Cloud update failed", e);
-                        window.showToast("更新エラー");
+                        if (e.code === 'permission-denied') {
+                             window.showToast("更新エラー: 権限がありません");
+                        } else {
+                             window.showToast("更新エラー");
+                        }
                     }
                 }
             } else {
@@ -1053,6 +1135,10 @@
             updateTaskProperty(id, { alarmLeadTime: val });
         };
 
+        window.testAlarm = () => {
+            triggerAlarm("テスト", "1", "0");
+        };
+
         function checkAlarms(now) {
             const nowTime = now.getTime();
             const targetTasks = currentGroupId ? cloudTasks : localTasks;
@@ -1063,7 +1149,7 @@
                 task.boxSchedule.forEach(box => {
                     const triggerTime = box.absoluteTime - leadMs;
                     const notifyKey = `${task.id}-${box.num}`;
-                    if (nowTime >= triggerTime && nowTime < triggerTime + 1500 && !notifiedBoxesMap.has(notifyKey)) {
+                    if (nowTime >= triggerTime && nowTime < triggerTime + (60 * 1000) && !notifiedBoxesMap.has(notifyKey)) {
                         triggerAlarm(task.title, box.num, task.alarmLeadTime);
                         notifiedBoxesMap.add(notifyKey);
                     }
@@ -1131,7 +1217,11 @@
                     window.showToast("クラウドに履歴を保存しました");
                 } catch (e) {
                     console.error(e);
-                    window.showToast("保存エラー: " + e.message);
+                    if (e.code === 'permission-denied') {
+                         window.showToast("保存エラー: 権限がありません (ルールを確認してください)");
+                    } else {
+                         window.showToast("保存エラー: " + e.message);
+                    }
                 }
             } else {
                 localTasks.unshift(newTask);
