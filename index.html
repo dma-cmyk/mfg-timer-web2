@@ -2063,20 +2063,17 @@
                     const timeStr = dt.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', hour12: false });
                     const isPast = box.absoluteTime < Date.now();
                     
-                    // テーマごとの色を適用するため、Tailwindの固定色クラス(bg-white等)を削除し、CSS変数を使用
                     return `
-                    <div class="box-row flex items-center p-3 mb-2 rounded-xl border shadow-sm transition-all ${isPast ? 'opacity-60' : ''}" 
-                         id="row-${box.taskId}-${box.num}"
-                         style="background-color: var(--bg-card); border-color: var(--card-border); color: var(--text-main);">
+                    <div class="box-row flex items-center p-3 mb-2 rounded-xl border ${isPast ? 'bg-slate-50 border-slate-100 opacity-60' : 'bg-white border-slate-200'} shadow-sm" id="row-${box.taskId}-${box.num}">
                         <div class="w-16 text-center mr-2 shrink-0">
-                            <div class="text-[10px] font-bold opacity-50" style="color: var(--text-sub);">${dateStr}</div>
+                            <div class="text-[10px] font-bold opacity-50">${dateStr}</div>
                             <div class="text-xs font-black tracking-tight">${timeStr}</div>
                         </div>
                         <div class="flex-1 min-w-0 mr-2">
-                            <div class="text-xs font-bold truncate">${box.taskTitle}</div>
+                            <div class="text-xs font-bold truncate" style="color: var(--text-main);">${box.taskTitle}</div>
                             <div class="flex items-center gap-2 mt-0.5">
-                                <span class="text-[10px] px-1.5 rounded font-bold border" style="background-color: var(--bg-body); color: var(--text-sub); border-color: var(--card-border);">${box.num}箱目</span>
-                                ${box.memo ? `<span class="text-[10px] opacity-70 truncate max-w-[100px]">📝 ${box.memo}</span>` : ''}
+                                <span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 rounded font-bold">${box.num}箱目</span>
+                                ${box.memo ? `<span class="text-[10px] text-slate-400 truncate max-w-[100px]">📝 ${box.memo}</span>` : ''}
                             </div>
                         </div>
                         <div class="flex flex-col items-end gap-1 shrink-0">
