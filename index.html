@@ -88,29 +88,42 @@
             background-size: cover;
         }
 
-        /* 次のアラーム強調表示 */
+        /* 次のアラーム強調表示（左上バッジ形式） */
         .next-alarm-row {
             position: relative;
             transition: background-color 0.3s, border-left-color 0.3s;
+            overflow: hidden; 
         }
         .next-alarm-row::after {
-            content: "NEXT ▶";
+            content: "NEXT";
             position: absolute;
-            right: 8px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 9px;
+            left: 0;
+            top: 0;
+            font-size: 8px;
             font-weight: 900;
-            opacity: 0.5;
+            color: #fff;
+            padding: 1px 6px;
+            border-bottom-right-radius: 6px;
             pointer-events: none;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
+            z-index: 10;
         }
 
-        [data-theme="default"] .next-alarm-row { background-color: #fef9c3; border-left: 4px solid #facc15; }
-        [data-theme="cyberpunk"] .next-alarm-row { background-color: rgba(0, 255, 204, 0.1); border-left: 4px solid #00ffcc; }
-        [data-theme="marunouchi"] .next-alarm-row { background-color: #fff7ed; border-left: 4px solid #c9a063; }
-        [data-theme="tropical"] .next-alarm-row { background-color: #ecfeff; border-left: 4px solid #06b6d4; }
-        [data-theme="galaxy"] .next-alarm-row { background-color: rgba(192, 132, 252, 0.2); border-left: 4px solid #c084fc; }
+        /* テーマ別スタイル（背景色・ボーダー・バッジ色） */
+        [data-theme="default"] .next-alarm-row { background-color: #fef9c3 !important; border-left: 4px solid #facc15 !important; }
+        [data-theme="default"] .next-alarm-row::after { background-color: #facc15; color: #713f12; }
+
+        [data-theme="cyberpunk"] .next-alarm-row { background-color: rgba(0, 255, 204, 0.15) !important; border-left: 4px solid #00ffcc !important; }
+        [data-theme="cyberpunk"] .next-alarm-row::after { background-color: #00ffcc; color: #000; }
+
+        [data-theme="marunouchi"] .next-alarm-row { background-color: #fff7ed !important; border-left: 4px solid #c9a063 !important; }
+        [data-theme="marunouchi"] .next-alarm-row::after { background-color: #c9a063; }
+
+        [data-theme="tropical"] .next-alarm-row { background-color: #ecfeff !important; border-left: 4px solid #06b6d4 !important; }
+        [data-theme="tropical"] .next-alarm-row::after { background-color: #06b6d4; }
+
+        [data-theme="galaxy"] .next-alarm-row { background-color: rgba(192, 132, 252, 0.25) !important; border-left: 4px solid #c084fc !important; }
+        [data-theme="galaxy"] .next-alarm-row::after { background-color: #c084fc; }
 
 
         body {
@@ -140,17 +153,19 @@
         .dt-input {
             background: transparent;
             border: none;
+            /* 幅広フォントを回避し、システムフォントを強制して幅を節約 */
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            font-size: 10px;
+            font-size: 13px; /* 少し大きく */
             font-weight: 700;
             color: inherit;
-            width: 110px;
-            text-align: right;
+            /* width: 110px;  削除してflexで制御 */
+            text-align: left;
             outline: none;
             letter-spacing: -0.5px;
             padding: 0;
             margin: 0;
             line-height: 1;
+            width: 100%; /* 親要素に合わせる */
         }
         .dt-input::-webkit-datetime-edit { padding: 0; }
         .dt-input::-webkit-datetime-edit-fields-wrapper { padding: 0; }
@@ -215,6 +230,9 @@
 </head>
 <body data-theme="default" class="theme-transition min-h-screen pb-24">
 
+    <!-- サジェスト用データリスト -->
+    <datalist id="machine-suggestions"></datalist>
+
     <!-- Header -->
     <header class="sticky top-0 z-30 px-4 py-3 flex justify-between items-center shadow-sm" style="background-color: var(--header-bg); border-bottom: 1px solid var(--card-border);">
         <div class="flex flex-col flex-1 min-w-0 mr-2">
@@ -225,7 +243,7 @@
                     <span id="groupStatusText">LOCAL</span>
                 </span>
             </div>
-            <p id="currentTime" class="text-[10px] font-mono font-bold uppercase tracking-widest opacity-60 truncate" style="color: var(--text-sub);">
+            <p id="currentTime" class="text-[10px] font-mono font-bold uppercase tracking-widest opacity-60 whitespace-nowrap" style="color: var(--text-sub);">
                 00/00 00:00:00
             </p>
         </div>
@@ -268,6 +286,41 @@
     </header>
 
     <!-- Modals -->
+
+    <!-- History Detail Modal (Full Screen) -->
+    <div id="historyDetailModal" class="hidden fixed inset-0 z-50 flex flex-col transition-all duration-300 transform translate-y-full" style="background-color: var(--bg-body);">
+        <div class="sticky top-0 z-10 px-4 py-3 flex justify-between items-center shadow-sm" style="background-color: var(--header-bg); border-bottom: 1px solid var(--card-border);">
+            <button onclick="closeHistoryDetail()" class="p-2 rounded-full border transition-all active:scale-95" style="border-color: var(--card-border); color: var(--text-sub);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <h3 class="font-black text-lg truncate px-2 flex-1 text-center" id="detailModalTitle" style="color: var(--text-main);">詳細</h3>
+            <div class="w-10"></div>
+        </div>
+        <div id="historyDetailContent" class="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar pb-32"></div>
+    </div>
+    
+    <!-- Notification Log Modal -->
+    <div id="notificationLogModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm">
+        <div class="w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 max-h-[85vh] flex flex-col" style="background-color: var(--bg-card);">
+            <div class="flex justify-between items-center border-b pb-3" style="border-color: var(--card-border);">
+                <h3 class="font-black text-lg flex items-center gap-2" style="color: var(--text-main);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-yellow-500"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+                    通知ログ
+                </h3>
+                <button onclick="toggleNotificationLogModal()" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div id="notificationList" class="flex-1 overflow-y-auto custom-scrollbar space-y-2 min-h-[200px]">
+                <!-- Logs go here -->
+            </div>
+            <div class="pt-2 flex gap-2">
+                <button onclick="clearNotificationLog()" class="flex-1 py-3 rounded-xl font-bold text-red-500 bg-red-50 border border-red-100 shadow-sm active:scale-95 transition-all text-sm">クリア</button>
+                <button onclick="toggleNotificationLogModal()" class="flex-1 py-3 rounded-xl font-bold text-white shadow-lg active:scale-95 transition-all text-sm" style="background-color: var(--primary);">閉じる</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Help Modal -->
     <div id="helpModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm">
         <div class="w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto custom-scrollbar" style="background-color: var(--bg-card);">
@@ -303,7 +356,7 @@
                         箱ごとの完了予定時刻リストです。進捗管理に使用します。
                     </p>
                     <ul class="text-xs space-y-1.5 opacity-80 pl-2">
-                        <li class="flex gap-2"><span class="font-bold text-teal-500">▶</span> <span><strong class="font-bold">時刻調整:</strong> 「+」「-」ボタンや時刻タップで遅れを反映できます。</span></li>
+                        <li class="flex gap-2"><span class="font-bold text-teal-500">▶</span> <span><strong class="font-bold">時刻調整:</strong> カレンダー入力欄で直接変更できます。</span></li>
                         <li class="flex gap-2"><span class="font-bold text-teal-500">▶</span> <span><strong class="font-bold">「今」ボタン:</strong> その箱の完了を現時刻として記録し、以降の予定を再計算します。</span></li>
                         <li class="flex gap-2"><span class="font-bold text-teal-500">▶</span> <span><strong class="font-bold">メモ:</strong> トラブルや休憩などをメモ欄に残せます。複数行入力可能です。</span></li>
                     </ul>
@@ -327,41 +380,6 @@
             <div class="pt-2">
                 <button onclick="toggleHelpModal()" class="w-full py-3 rounded-xl font-bold text-white shadow-lg active:scale-95 transition-all text-sm" style="background-color: var(--primary);">閉じる</button>
             </div>
-        </div>
-    </div>
-    
-    <!-- Notification Log Modal -->
-    <div id="notificationLogModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm">
-        <div class="w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 max-h-[85vh] flex flex-col" style="background-color: var(--bg-card);">
-            <div class="flex justify-between items-center border-b pb-3" style="border-color: var(--card-border);">
-                <h3 class="font-black text-lg flex items-center gap-2" style="color: var(--text-main);">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-yellow-500"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
-                    通知ログ
-                </h3>
-                <button onclick="toggleNotificationLogModal()" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                </button>
-            </div>
-            <div id="notificationList" class="flex-1 overflow-y-auto custom-scrollbar space-y-2 min-h-[200px]">
-                <!-- Logs go here -->
-            </div>
-            <div class="pt-2 flex gap-2">
-                <button onclick="clearNotificationLog()" class="flex-1 py-3 rounded-xl font-bold text-red-500 bg-red-50 border border-red-100 shadow-sm active:scale-95 transition-all text-sm">クリア</button>
-                <button onclick="toggleNotificationLogModal()" class="flex-1 py-3 rounded-xl font-bold text-white shadow-lg active:scale-95 transition-all text-sm" style="background-color: var(--primary);">閉じる</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Theme Modal -->
-    <div id="themeModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm">
-        <div class="w-full max-w-xs rounded-3xl p-6 shadow-2xl space-y-4" style="background-color: var(--bg-card);">
-            <h3 class="font-bold text-center mb-4">テーマ切り替え</h3>
-            <button onclick="setTheme('default')" class="w-full py-3 rounded-xl border-2 font-bold mb-2 transition-all active:scale-95" style="border-color: #4f46e5; color: #4f46e5;">通常モード</button>
-            <button onclick="setTheme('cyberpunk')" class="w-full py-3 rounded-xl border-2 font-bold mb-2 transition-all active:scale-95 bg-black" style="border-color: #00ffcc; color: #00ffcc; font-family: 'Share Tech Mono';">Cyberpunk 2077</button>
-            <button onclick="setTheme('marunouchi')" class="w-full py-3 rounded-xl border-2 font-bold transition-all active:scale-95" style="border-color: #c9a063; color: #5d544b; font-family: 'Shippori Mincho';">丸の内OL</button>
-            <button onclick="setTheme('tropical')" class="w-full py-3 rounded-xl border-2 font-bold mb-2 transition-all active:scale-95 bg-yellow-50" style="border-color: #fcd34d; color: #0891b2; font-family: 'Inter';">南国ビーチ</button>
-            <button onclick="setTheme('galaxy')" class="w-full py-3 rounded-xl border-2 font-bold mb-2 transition-all active:scale-95 bg-slate-900" style="border-color: #c084fc; color: #e2e8f0; font-family: 'Share Tech Mono';">ギャラクシー</button>
-            <button onclick="toggleThemeModal()" class="w-full text-center text-xs font-bold pt-4" style="color: var(--text-sub);">閉じる</button>
         </div>
     </div>
 
@@ -410,16 +428,16 @@
         </div>
     </div>
 
-    <!-- Confirm Modal -->
-    <div id="confirmModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
+    <!-- Confirm Modal (New) -->
+    <div id="customConfirmModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
         <div class="w-full max-w-xs rounded-3xl p-6 shadow-2xl space-y-6 text-center" style="background-color: var(--bg-card);">
             <div class="space-y-2">
-                <h3 class="font-black text-lg" style="color: var(--text-main);">履歴を全て削除</h3>
-                <p class="text-sm opacity-70" style="color: var(--text-sub);">現在のリスト上のデータがすべて消去されます。<br>共有中の場合、全員のデータが消えます。</p>
+                <h3 id="confirmModalTitle" class="font-black text-lg" style="color: var(--text-main);">確認</h3>
+                <p id="confirmModalMessage" class="text-sm opacity-70" style="color: var(--text-sub);">実行しますか？</p>
             </div>
             <div class="grid grid-cols-2 gap-3">
-                <button onclick="toggleConfirmModal()" class="py-3 rounded-xl text-sm font-bold border" style="border-color: var(--card-border); color: var(--text-sub);">キャンセル</button>
-                <button onclick="executeClearAll()" class="py-3 rounded-xl text-sm font-bold text-white bg-red-500 shadow-lg shadow-red-200">削除する</button>
+                <button onclick="closeConfirmModal()" class="py-3 rounded-xl text-sm font-bold border" style="border-color: var(--card-border); color: var(--text-sub);">キャンセル</button>
+                <button id="confirmModalActionBtn" class="py-3 rounded-xl text-sm font-bold text-white bg-red-500 shadow-lg shadow-red-200">実行</button>
             </div>
         </div>
     </div>
@@ -429,7 +447,7 @@
         <!-- TAB 1: CALCULATOR -->
         <section id="tab-calc" class="tab-content active space-y-4">
             <div class="rounded-2xl p-4 shadow-sm border space-y-3" style="background-color: var(--bg-card); border-color: var(--card-border);">
-                <input type="text" id="taskTitle" placeholder="案件名 / 製品名" 
+                <input type="text" id="taskTitle" list="machine-suggestions" placeholder="案件名 / 製品名" 
                        class="w-full text-base font-bold placeholder:text-slate-300 border-none focus:ring-0 p-0 bg-transparent" style="color: var(--text-main);">
                 <div class="flex items-center gap-2">
                     <div class="flex-1 flex items-center gap-2 rounded-xl px-3 py-2 border" style="background-color: var(--bg-body); border-color: var(--card-border);">
@@ -622,6 +640,8 @@
         let localTasks = [];
         let calcTimer; // Timer for debounce
         let historyViewMode = 'task'; // 'task' or 'timeline'
+        let currentViewingTaskId = null; // 現在詳細表示中のタスクID
+        let pendingAction = null; // For custom confirm modal
 
         // Notification Log
         let notificationLog = [];
@@ -705,6 +725,19 @@
                 window.autoResize(el);
             });
         }
+        
+        // --- Machine Suggestion Logic ---
+        function generateMachineSuggestions() {
+            const dataList = document.getElementById('machine-suggestions');
+            if (!dataList) return;
+            
+            dataList.innerHTML = '';
+            for (let i = 1; i <= 50; i++) {
+                const option = document.createElement('option');
+                option.value = `${i}号機`;
+                dataList.appendChild(option);
+            }
+        }
 
         // --- Header Menu Logic ---
         window.toggleHeaderMenu = () => {
@@ -720,6 +753,26 @@
                 menu.classList.add('hidden');
             }
         });
+
+        // --- Custom Confirm Modal Logic ---
+        window.showConfirmModal = (title, message, action) => {
+            document.getElementById('confirmModalTitle').textContent = title;
+            document.getElementById('confirmModalMessage').innerHTML = message.replace(/\n/g, '<br>'); // Allow multiline
+            pendingAction = action;
+            document.getElementById('customConfirmModal').classList.remove('hidden');
+        };
+
+        window.closeConfirmModal = () => {
+            document.getElementById('customConfirmModal').classList.add('hidden');
+            pendingAction = null;
+        };
+
+        // Initialize confirm button listener once
+        document.getElementById('confirmModalActionBtn').addEventListener('click', () => {
+            if (pendingAction) pendingAction();
+            closeConfirmModal();
+        });
+
 
         // --- View Mode Logic ---
         window.toggleHistoryViewMode = (mode) => {
@@ -745,6 +798,148 @@
                 btnTimeline.classList.remove('text-slate-400');
             }
         }
+        
+        // --- History Detail Modal Logic ---
+        window.openHistoryDetail = (taskId) => {
+            currentViewingTaskId = taskId;
+            const modal = document.getElementById('historyDetailModal');
+            modal.classList.remove('hidden');
+            // 少し遅らせてアニメーション（スライドイン）
+            requestAnimationFrame(() => {
+                modal.classList.remove('translate-y-full');
+            });
+            renderHistoryDetail();
+        };
+
+        window.closeHistoryDetail = () => {
+            const modal = document.getElementById('historyDetailModal');
+            modal.classList.add('translate-y-full');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                currentViewingTaskId = null;
+            }, 300); // Transition duration matches CSS
+        };
+
+        window.renderHistoryDetail = () => {
+            if (!currentViewingTaskId) return;
+            const list = currentGroupId ? cloudTasks : localTasks;
+            const task = list.find(t => t.id === currentViewingTaskId);
+            
+            if (!task) {
+                closeHistoryDetail();
+                return;
+            }
+
+            // タイトル更新
+            document.getElementById('detailModalTitle').textContent = task.title;
+
+            const content = document.getElementById('historyDetailContent');
+            
+            // コンテンツ生成（以前のアコーディオンの中身をベースに拡張）
+            let html = `
+                <div class="bg-white p-4 rounded-3xl border shadow-sm space-y-4" style="background-color: var(--bg-card); border-color: var(--card-border);">
+                     <!-- Settings Section -->
+                    <div class="flex flex-col gap-4">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold opacity-70" style="color: var(--text-sub);">案件名</span>
+                            <input type="text" value="${task.title}" 
+                                   list="machine-suggestions"
+                                   onchange="updateTaskTitle(${task.id}, this.value)"
+                                   class="text-right font-bold text-sm bg-transparent border-b border-transparent focus:border-indigo-500 outline-none transition-colors w-2/3"
+                                   style="color: var(--text-main);"
+                                   placeholder="案件名を入力">
+                        </div>
+
+                        <div class="flex items-center justify-between">
+                             <div class="flex flex-col">
+                                <span class="text-[10px] font-bold opacity-50 uppercase block">通知設定</span>
+                                <div class="flex items-center gap-2 mt-0.5">
+                                    <input type="number" value="${task.alarmLeadTime}" onchange="updateTaskAlarmLeadTime(${task.id}, this.value)" class="w-8 text-center text-sm font-black border-b border-slate-300 bg-transparent outline-none" style="color: var(--text-main);">
+                                    <span class="text-[10px] opacity-70" style="color: var(--text-sub);">分前</span>
+                                </div>
+                            </div>
+                            <label class="switch"><input type="checkbox" ${task.alarmEnabled ? 'checked' : ''} onchange="toggleTaskAlarm(${task.id})"><span class="slider"></span></label>
+                        </div>
+                    </div>
+
+                    <!-- Params Edit Section -->
+                    <div class="grid grid-cols-3 gap-3 p-3 rounded-2xl border" style="background-color: var(--bg-body); border-color: var(--card-border);">
+                        <div>
+                            <label class="text-[9px] font-bold opacity-50 block mb-1">予定数</label>
+                            <input type="number" class="w-full bg-transparent border-b border-slate-200 text-xs font-bold outline-none focus:border-indigo-500"
+                                style="color: var(--text-main);"
+                                value="${task.params.quantity}" onchange="updateTaskParams(${task.id}, 'quantity', this.value)">
+                        </div>
+                        <div>
+                            <label class="text-[9px] font-bold opacity-50 block mb-1">取り数</label>
+                            <input type="number" class="w-full bg-transparent border-b border-slate-200 text-xs font-bold outline-none focus:border-indigo-500"
+                                style="color: var(--text-main);"
+                                value="${task.params.cavities}" onchange="updateTaskParams(${task.id}, 'cavities', this.value)">
+                        </div>
+                        <div>
+                            <label class="text-[9px] font-bold opacity-50 block mb-1">サイクル</label>
+                            <input type="number" step="0.1" class="w-full bg-transparent border-b border-slate-200 text-xs font-bold outline-none focus:border-indigo-500"
+                                style="color: var(--text-main);"
+                                value="${task.params.cycleTime}" onchange="updateTaskParams(${task.id}, 'cycleTime', this.value)">
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex gap-2">
+                        <button onclick="downloadCSV(${task.id})" class="flex-1 py-3 rounded-xl text-xs font-bold border active:scale-95 transition-all" style="background-color: var(--bg-body); color: var(--text-sub); border-color: var(--card-border);">CSV</button>
+                        <button onclick="copyTask(${task.id})" class="flex-1 py-3 rounded-xl text-xs font-bold border active:scale-95 transition-all" style="background-color: var(--bg-body); color: var(--text-sub); border-color: var(--card-border);">コピー</button>
+                        <button onclick="deleteTaskAndClose(${task.id})" class="w-12 rounded-xl flex items-center justify-center bg-red-50 text-red-500 border border-red-100 active:scale-95 transition-all"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
+                    </div>
+                </div>
+
+                <!-- Box List -->
+                <div class="space-y-2 pb-10" id="boxlist-${task.id}">
+                    <div class="flex items-center gap-2 px-2">
+                        <h4 class="text-xs font-bold opacity-60 uppercase tracking-widest">Box Timeline</h4>
+                    </div>
+                    ${task.boxSchedule.map(box => {
+                        const boxFinishDate = new Date(box.absoluteTime);
+                        const displayTime = `${boxFinishDate.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })} ${boxFinishDate.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
+                        const boxIso = dateToIsoLocal(boxFinishDate);
+                        const currentMemo = (task.manualMemos && task.manualMemos[box.num] !== undefined) ? task.manualMemos[box.num] : (box.memo || "");
+                        
+                        return `<div class="box-row flex flex-col p-3 rounded-2xl border shadow-sm bg-white transition-all" id="row-${task.id}-${box.num}" style="background-color: var(--bg-card); border-color: var(--card-border);">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-3">
+                                    <span class="w-8 h-8 flex items-center justify-center rounded-xl text-xs font-black border flex-shrink-0" style="background-color: var(--bg-body); color: var(--primary); border-color: var(--accent);">${box.num}</span>
+                                    <div class="flex flex-col">
+                                         <span class="text-[10px] font-bold opacity-50">完了予定</span>
+                                         <span class="text-sm font-black tracking-tight" style="color: var(--text-main);">${displayTime}</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <!-- Calendar Button (Hidden Input) -->
+                                    <div class="relative w-9 h-9 flex items-center justify-center bg-slate-100 rounded-xl text-slate-500 hover:bg-slate-200 transition-colors">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                                        <input type="datetime-local" class="absolute inset-0 opacity-0 w-full h-full cursor-pointer" value="${boxIso}" onchange="updateBoxTimeManual(${task.id}, ${box.num}, this.value)">
+                                    </div>
+                                    <!-- Now Button -->
+                                    <button onclick="setBoxToNow(${task.id}, ${box.num})" class="h-9 px-3 bg-indigo-600 text-white rounded-xl text-xs font-bold active:scale-95 transition-all shadow-sm">今</button>
+                                </div>
+                            </div>
+                            <textarea class="w-full bg-slate-50 border border-slate-100 rounded-xl p-2 text-xs text-slate-700 outline-none resize-none focus:bg-white focus:border-indigo-300 transition-colors" rows="1" placeholder="メモを入力..." oninput="window.autoResize(this)" onchange="updateBoxMemoManual(${task.id}, ${box.num}, this.value)">${currentMemo}</textarea>
+                        </div>`;
+                    }).join('')}
+                </div>
+            `;
+            
+            content.innerHTML = html;
+            // Adjust textareas
+            content.querySelectorAll('textarea').forEach(window.autoResize);
+        };
+
+        window.deleteTaskAndClose = async (taskId) => {
+            // Use custom confirm modal instead of browser confirm()
+            showConfirmModal("削除の確認", "本当に削除しますか？\n元に戻すことはできません。", async () => {
+                await deleteTask(taskId);
+                closeHistoryDetail();
+            });
+        };
 
         // --- Notification Log Logic ---
         window.toggleNotificationLogModal = () => {
@@ -1011,25 +1206,27 @@
 
             } else {
                 // 案件別モードの場合
-                list.forEach(task => {
-                    const boxListContainer = document.getElementById(`boxlist-${task.id}`);
-                    if (!boxListContainer) return;
+                // 詳細画面が開いている場合のみ処理すれば良い
+                if (currentViewingTaskId) {
+                    const task = list.find(t => t.id === currentViewingTaskId);
+                    if (task) {
+                        const boxListContainer = document.getElementById(`boxlist-${task.id}`);
+                        if (boxListContainer) {
+                             const rows = boxListContainer.querySelectorAll('.box-row');
+                             rows.forEach(row => row.classList.remove('next-alarm-row'));
 
-                    const rows = boxListContainer.querySelectorAll('.box-row');
-                    rows.forEach(row => {
-                        row.classList.remove('next-alarm-row');
-                    });
-
-                    if (task.alarmEnabled && task.boxSchedule) {
-                        const nextBox = task.boxSchedule.find(b => b.absoluteTime > now);
-                        if (nextBox) {
-                            const row = document.getElementById(`row-${task.id}-${nextBox.num}`);
-                            if (row) {
-                                row.classList.add('next-alarm-row');
-                            }
+                             if (task.alarmEnabled && task.boxSchedule) {
+                                 const nextBox = task.boxSchedule.find(b => b.absoluteTime > now);
+                                 if (nextBox) {
+                                     const row = document.getElementById(`row-${task.id}-${nextBox.num}`);
+                                     if (row) {
+                                         row.classList.add('next-alarm-row');
+                                     }
+                                 }
+                             }
                         }
                     }
-                });
+                }
             }
         }
 
@@ -1112,29 +1309,28 @@
                     // 表示するときだけ日付変換を行う
                     const boxFinishDate = new Date(absoluteTime);
                     const isoLocal = dateToIsoLocal(boxFinishDate);
+                    // 時間表示用文字列
+                    const displayTime = `${boxFinishDate.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })} ${boxFinishDate.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
                     
                     const isAdjusted = delays[i] && delays[i] !== 0;
                     html += `
-                        <div class="flex flex-col p-2 rounded-2xl border transition-all shadow-sm mb-2" style="background-color: var(--bg-card); border-color: var(--card-border);">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-2 shrink-0">
-                                    <span class="w-7 h-7 flex items-center justify-center rounded-xl text-[10px] font-black border" style="background-color: var(--bg-body); color: var(--primary); border-color: var(--accent);">${i}</span>
+                        <div class="flex flex-col p-3 rounded-2xl border transition-all shadow-sm mb-2" style="background-color: var(--bg-card); border-color: var(--card-border);">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-3">
+                                    <span class="w-8 h-8 flex items-center justify-center rounded-xl text-[10px] font-black border flex-shrink-0" style="background-color: var(--bg-body); color: var(--primary); border-color: var(--accent);">${i}</span>
                                     <div class="flex flex-col">
-                                        <span class="text-[9px] font-bold opacity-70" style="color: var(--text-sub);">箱目</span>
-                                        <button onclick="event.stopPropagation(); setBoxToNow(${taskId}, ${i})" class="px-1 py-0.5 bg-indigo-600 text-white rounded text-[9px] font-bold active:scale-95 transition-all">今</button>
+                                        <span class="text-[9px] font-bold opacity-50">完了予定 ${isAdjusted ? '<span class="text-orange-500 ml-1">ADJ</span>' : ''}</span>
+                                        <span class="text-sm font-black tracking-tight" style="color: var(--text-main);">${displayTime}</span>
                                     </div>
                                 </div>
-                                <div class="flex flex-col items-end gap-1 overflow-hidden">
-                                    <div class="flex items-center gap-1">
-                                        <div class="flex flex-col items-end">
-                                            <input type="datetime-local" class="dt-input" value="${isoLocal}" onchange="updateBoxTimeManual(${taskId}, ${i}, this.value)">
-                                            ${isAdjusted ? `<span class="text-[8px] font-bold text-orange-500 uppercase leading-none">調整済み</span>` : ''}
-                                        </div>
-                                        <div class="flex gap-0.5 border-l pl-1" style="border-color: var(--card-border);">
-                                            <button onclick="event.stopPropagation(); adjustBoxDelay(${taskId}, ${i}, 60)" class="w-5 h-5 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-[10px] font-bold active:bg-indigo-100 transition-colors">+</button>
-                                            <button onclick="event.stopPropagation(); adjustBoxDelay(${taskId}, ${i}, -60)" class="w-5 h-5 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-[10px] font-bold active:bg-indigo-100 transition-colors">-</button>
-                                        </div>
+                                <div class="flex items-center gap-2">
+                                    <!-- Calendar Button (Hidden Input) -->
+                                    <div class="relative w-9 h-9 flex items-center justify-center bg-slate-100 rounded-xl text-slate-500 hover:bg-slate-200 transition-colors">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                                        <input type="datetime-local" class="absolute inset-0 opacity-0 w-full h-full cursor-pointer" value="${isoLocal}" onchange="updateBoxTimeManual(${taskId}, ${i}, this.value)">
                                     </div>
+                                    <!-- Now Button -->
+                                    <button onclick="event.stopPropagation(); setBoxToNow(${taskId}, ${i})" class="h-9 px-3 bg-indigo-600 text-white rounded-xl text-xs font-bold active:scale-95 transition-all shadow-sm">今</button>
                                 </div>
                             </div>
                             <textarea class="memo-input" rows="1" placeholder="メモを入力..." oninput="window.autoResize(this)" onchange="updateBoxMemoManual(${taskId}, ${i}, this.value)" onclick="event.stopPropagation()">${currentMemo}</textarea>
@@ -1189,6 +1385,10 @@
                     }
                     savePersistence();
                     renderTasks();
+                    // If this task is currently viewed in detail, re-render detail
+                    if (currentViewingTaskId === taskId) {
+                         renderHistoryDetail();
+                    }
                 }
             }
         }
@@ -1748,7 +1948,13 @@
 
         window.triggerClearAll = () => {
             const list = currentGroupId ? cloudTasks : localTasks;
-            list.length > 0 ? toggleConfirmModal() : showToast("履歴はありません");
+            if (list.length > 0) {
+                 showConfirmModal("履歴の全削除", "表示されている履歴をすべて削除しますか？\nこの操作は取り消せません。", () => {
+                     executeClearAll();
+                 });
+            } else {
+                showToast("履歴はありません");
+            }
         };
 
         window.executeClearAll = async () => {
@@ -1763,7 +1969,6 @@
                 renderTasks(); 
                 window.showToast("履歴を削除しました");
             }
-            toggleConfirmModal();
         };
 
         window.copyTask = (id) => { 
@@ -1772,7 +1977,6 @@
             if (!t) return; 
             let txt = `【${t.title}】\n完了: ${t.finishFull}\n`; 
             t.boxSchedule.forEach(b => {
-                // Generate date string from absoluteTime
                 const dt = new Date(b.absoluteTime);
                 const dateStr = dt.toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit' });
                 const timeStr = dt.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -1847,114 +2051,46 @@
                     
                     return `
                     <div class="box-row flex items-center p-3 mb-2 rounded-xl border ${isPast ? 'bg-slate-50 border-slate-100 opacity-60' : 'bg-white border-slate-200'} shadow-sm" id="row-${box.taskId}-${box.num}">
-                        <div class="w-12 text-center mr-3">
+                        <div class="w-16 text-center mr-2 shrink-0">
                             <div class="text-[10px] font-bold opacity-50">${dateStr}</div>
-                            <div class="text-sm font-black tracking-tighter">${timeStr}</div>
+                            <div class="text-xs font-black tracking-tight">${timeStr}</div>
                         </div>
-                        <div class="flex-1 min-w-0">
+                        <div class="flex-1 min-w-0 mr-2">
                             <div class="text-xs font-bold truncate" style="color: var(--text-main);">${box.taskTitle}</div>
                             <div class="flex items-center gap-2 mt-0.5">
                                 <span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 rounded font-bold">${box.num}箱目</span>
                                 ${box.memo ? `<span class="text-[10px] text-slate-400 truncate max-w-[100px]">📝 ${box.memo}</span>` : ''}
                             </div>
                         </div>
-                        ${(box.delay && box.delay !== 0) ? '<span class="text-[8px] text-orange-400 font-bold italic mr-2">ADJ</span>' : ''}
+                        <div class="flex flex-col items-end gap-1 shrink-0">
+                            <button onclick="setBoxToNow(${box.taskId}, ${box.num})" class="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-[10px] font-bold active:scale-95 transition-all shadow-sm whitespace-nowrap">今</button>
+                            ${(box.delay && box.delay !== 0) ? '<span class="text-[8px] text-orange-400 font-bold italic">ADJ</span>' : ''}
+                        </div>
                     </div>`;
                 }).join('');
 
             } else {
-                // 案件別モード
+                // 案件別モード (Simplified List for better overview)
                 taskListContainer.innerHTML = list.map(task => {
-                    const isExpanded = expandedTaskIds.has(task.id);
+                    // isExpanded is not used for opening/closing here anymore, just clicking opens modal
                     return `
-                    <div class="rounded-2xl shadow-sm border overflow-hidden transition-all mb-4" style="background-color: var(--bg-card); border-color: var(--card-border);">
-                        <div class="p-4" onclick="toggleHistoryDetail(${task.id})">
-                            <div class="flex justify-between items-start">
-                                <div class="flex-1 pr-4" onclick="event.stopPropagation()">
-                                    <input type="text" value="${task.title}" 
-                                           onchange="updateTaskTitle(${task.id}, this.value)"
-                                           class="font-bold text-sm bg-transparent border-b border-transparent focus:border-indigo-500 outline-none w-full transition-colors placeholder-slate-300"
-                                           style="color: var(--text-main);"
-                                           placeholder="案件名を入力">
-                                </div>
-                                <div class="flex items-center gap-2 shrink-0">
-                                    ${task.alarmEnabled ? '<span class="text-[8px] bg-red-100 text-red-500 px-1 rounded font-bold">ALARM ON</span>' : ''}
-                                    <span class="text-[9px] font-black px-2 py-0.5 rounded-full uppercase" style="background-color: var(--bg-body); color: var(--primary); border: 1px solid var(--accent);">${task.boxes} BOX</span>
+                    <div class="rounded-2xl shadow-sm border overflow-hidden transition-all mb-3 active:scale-[0.98]" 
+                         style="background-color: var(--bg-card); border-color: var(--card-border);"
+                         onclick="openHistoryDetail(${task.id})">
+                        <div class="p-4 flex justify-between items-center">
+                            <div class="flex-1 min-w-0">
+                                <div class="font-bold text-sm truncate" style="color: var(--text-main);">${task.title}</div>
+                                <div class="text-[10px] opacity-60 font-mono mt-0.5" style="color: var(--text-sub);">
+                                    ${task.startDateTime} 〜
                                 </div>
                             </div>
-                            <div class="mt-3">
-                                <span class="text-[9px] opacity-40 font-bold uppercase block">Finish</span>
-                                <span class="text-lg font-black tracking-tight" style="color: var(--primary);">${task.finishFull}</span>
+                            <div class="flex flex-col items-end gap-1 ml-3">
+                                <span class="text-xs font-black" style="color: var(--primary);">${task.finishFull ? task.finishFull.split(' ')[1] : '--:--'}</span>
+                                <span class="text-[9px] font-bold px-2 py-0.5 rounded-full border bg-opacity-50" style="background-color: var(--bg-body); border-color: var(--accent); color: var(--text-sub);">${task.boxes} BOX</span>
                             </div>
                         </div>
-                        <div id="det-${task.id}" class="${isExpanded ? '' : 'hidden'} border-t p-3 space-y-4" style="border-color: var(--card-border); background-color: var(--bg-body);">
-                            <div class="bg-white p-3 rounded-xl border border-slate-100 flex items-center justify-between shadow-sm">
-                                <div class="flex flex-col">
-                                    <span class="text-[10px] font-bold text-slate-400 uppercase">通知設定</span>
-                                    <div class="flex items-center gap-2 mt-1">
-                                        <input type="number" value="${task.alarmLeadTime}" onchange="updateTaskAlarmLeadTime(${task.id}, this.value)" class="w-10 text-center text-xs font-bold border-b border-slate-200 bg-transparent outline-none">
-                                        <span class="text-[10px] text-slate-500">分前</span>
-                                    </div>
-                                </div>
-                                <label class="switch"><input type="checkbox" ${task.alarmEnabled ? 'checked' : ''} onchange="toggleTaskAlarm(${task.id})"><span class="slider"></span></label>
-                            </div>
-                            
-                            <div class="grid grid-cols-3 gap-2 mb-3 bg-slate-50 p-2 rounded-xl border border-slate-100">
-                                <div>
-                                    <label class="text-[9px] text-slate-400 font-bold block mb-0.5">予定数</label>
-                                    <input type="number" class="w-full bg-white border border-slate-200 rounded px-2 py-1 text-xs font-bold text-slate-700 outline-none focus:border-indigo-500"
-                                        value="${task.params.quantity}" onchange="updateTaskParams(${task.id}, 'quantity', this.value)">
-                                </div>
-                                <div>
-                                    <label class="text-[9px] text-slate-400 font-bold block mb-0.5">取り数</label>
-                                    <input type="number" class="w-full bg-white border border-slate-200 rounded px-2 py-1 text-xs font-bold text-slate-700 outline-none focus:border-indigo-500"
-                                        value="${task.params.cavities}" onchange="updateTaskParams(${task.id}, 'cavities', this.value)">
-                                </div>
-                                <div>
-                                    <label class="text-[9px] text-slate-400 font-bold block mb-0.5">サイクル</label>
-                                    <input type="number" step="0.1" class="w-full bg-white border border-slate-200 rounded px-2 py-1 text-xs font-bold text-slate-700 outline-none focus:border-indigo-500"
-                                        value="${task.params.cycleTime}" onchange="updateTaskParams(${task.id}, 'cycleTime', this.value)">
-                                </div>
-                            </div>
-
-                            <div class="flex gap-2">
-                                <button onclick="downloadCSV(${task.id})" class="flex-1 py-2 rounded-xl text-[10px] font-bold border" style="background-color: var(--bg-card); color: var(--text-sub); border-color: var(--card-border);">CSV</button>
-                                <button onclick="copyTask(${task.id})" class="flex-1 py-2 rounded-xl text-[10px] font-bold border" style="background-color: var(--bg-card); color: var(--text-sub); border-color: var(--card-border);">コピー</button>
-                                <button onclick="deleteTask(${task.id})" class="w-10 h-10 rounded-xl flex items-center justify-center bg-red-50 text-red-400 border border-red-100"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
-                            </div>
-                            <div id="boxlist-${task.id}" class="space-y-1 max-h-56 overflow-y-auto custom-scrollbar pr-1">
-                                ${task.boxSchedule.map(box => {
-                                    const boxFinishDate = new Date(box.absoluteTime);
-                                    const boxDate = boxFinishDate.toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit' });
-                                    const boxTime = boxFinishDate.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', hour12: false });
-                                    const boxIso = dateToIsoLocal(boxFinishDate);
-
-                                    const currentMemo = (task.manualMemos && task.manualMemos[box.num] !== undefined) ? task.manualMemos[box.num] : (box.memo || "");
-                                    return `<div class="box-row flex flex-col p-2 border-b border-slate-200 last:border-0 opacity-80" id="row-${task.id}-${box.num}">
-                                        <div class="flex items-center justify-between">
-                                            <div class="flex items-center gap-1.5 overflow-hidden">
-                                                <span class="min-w-[20px] h-5 flex items-center justify-center rounded bg-slate-100 text-slate-500 text-[9px] font-bold">${box.num}</span>
-                                                <button onclick="event.stopPropagation(); setBoxToNow(${task.id}, ${box.num})" class="px-1.5 py-0.5 bg-indigo-600 text-white rounded text-[8px] font-bold active:scale-95 transition-all whitespace-nowrap">今</button>
-                                                ${(task.manualDelays && task.manualDelays[box.num]) ? '<span class="text-[8px] text-orange-400 font-bold italic leading-none shrink-0">ADJ</span>' : ''}
-                                            </div>
-                                            <div class="flex items-center gap-0.5">
-                                                <input type="datetime-local" class="dt-input" value="${boxIso}" onchange="updateBoxTimeManual(${task.id}, ${box.num}, this.value)">
-                                                <div class="flex gap-0.5" onclick="event.stopPropagation()">
-                                                    <button onclick="adjustBoxDelay(${task.id}, ${box.num}, 60)" class="w-5 h-5 rounded bg-white border border-slate-200 flex items-center justify-center text-[10px] font-bold active:bg-indigo-100">+</button>
-                                                    <button onclick="adjustBoxDelay(${task.id}, ${box.num}, -60)" class="w-5 h-5 rounded bg-white border border-slate-200 flex items-center justify-center text-[10px] font-bold active:bg-indigo-100">-</button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <textarea class="memo-input" rows="1" placeholder="メモ..." oninput="window.autoResize(this)" onchange="updateBoxMemoManual(${task.id}, ${box.num}, this.value)" onclick="event.stopPropagation()">${currentMemo}</textarea>
-                                    </div>`
-                                }).join('')}
-                            </div>
-                        </div>
-                    </div>`
+                    </div>`;
                 }).join('');
-                
-                // Adjust newly rendered textareas
-                setTimeout(adjustAllTextareas, 0);
             }
             updateNextHighlight();
         };
@@ -1964,6 +2100,9 @@
             loadPersistence();
             setInterval(updateClock, 1000);
             updateClock();
+            
+            // Generate Machine Suggestions
+            generateMachineSuggestions();
             
             ['quantity', 'cavities', 'qtyPerBox', 'cycleTime', 'efficiency', 'startTimeInput'].forEach(id => {
                 document.getElementById(id)?.addEventListener('input', () => { 
